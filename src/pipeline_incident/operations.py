@@ -1,4 +1,4 @@
-"""Keep approval and execution in the operator process."""
+"""Record projection attempts, approve replay plans and reconcile Silver commits."""
 
 import json
 import re
@@ -45,6 +45,7 @@ class Operator:
         self.engine.ensure_silver()
 
     def capture_delivery(self, delivery_id: str) -> Manifest:
+        # Confirm Bronze contains the sealed delivery before advancing it to CAPTURED.
         self.capture()
         try:
             manifest, _ = sealed_lines(self.workspace, self.engine, delivery_id)
@@ -60,6 +61,7 @@ class Operator:
         return manifest
 
     def project(self, delivery_id: str, failpoint: Failpoint = no_failure) -> dict[str, Any]:
+        # Resolve unfinished writes, then return any completed delivery's recorded outcome.
         self.reconcile()
         delivery = self.delivery(delivery_id)
         if delivery["state"] in {"FAILED_REPLAYABLE", "NEEDS_RECONCILIATION", "BLOCKED"}:
@@ -117,6 +119,7 @@ class Operator:
                 "DELIVERY_INELIGIBLE", "Only confirmed replayable deliveries can be planned."
             )
         candidate = validate_delivery(self.workspace, self.engine, delivery_id)
+        # Record the current versions, candidate digest and preview with a 15-minute expiry.
         body = {
             "schema_version": 1,
             "plan_id": uuid4().hex,
@@ -132,6 +135,7 @@ class Operator:
             "expires_at": (self.clock() + timedelta(minutes=15)).isoformat(),
         }
         digest = sha256(canonical(body))
+        # Supersede unfinished plans for this delivery and store the new plan and digest together.
         with ledger(self.workspace.ledger) as connection, connection:
             connection.execute(
                 "UPDATE plans SET superseded = 1 WHERE delivery_id = ? AND outcome IS NULL",
@@ -168,6 +172,7 @@ class Operator:
         self.require_unexpired(body)
         if record["outcome"]:
             raise PipelineError("COMPLETED_PLAN", "The replay plan already finished.")
+        # Record the first approval for this plan and return the stored actor and digest.
         with ledger(self.workspace.ledger) as connection, connection:
             connection.execute(
                 "INSERT OR IGNORE INTO approvals (plan_id, digest, actor, approved_at) VALUES (?, ?, ?, ?)",
@@ -186,6 +191,7 @@ class Operator:
         }
 
     def apply(self, plan_id: str, digest: str, failpoint: Failpoint = no_failure) -> dict[str, Any]:
+        # Check for a completed operation before validating an unfinished plan's approval.
         self.reconcile()
         record, body = self.load_plan(plan_id, digest)
         if record["outcome"]:
@@ -202,6 +208,7 @@ class Operator:
                 "APPROVAL_REQUIRED", "Approve this exact replay plan before applying it."
             )
         self.require_unexpired(body)
+        # Compare the current ledger and Silver state with the values saved in the plan.
         if (
             self.delivery(body["delivery_id"])["state"] != "FAILED_REPLAYABLE"
             or self.engine.version != body["silver_version"]
@@ -211,6 +218,7 @@ class Operator:
             raise PipelineError(
                 "STALE_PLAN", "The Silver snapshot or contract no longer matches the plan."
             )
+        # Revalidate the delivery and compare its seal, row digests and counts with the plan.
         try:
             candidate = validate_delivery(self.workspace, self.engine, body["delivery_id"])
         except Blocked as error:
@@ -236,6 +244,7 @@ class Operator:
             {"operation_id": operation_id, "plan_digest": plan["digest"] if plan else None}
         )
         version = self.engine.version
+        # Store the attempt and its expected row hashes before sending the merge to Spark.
         with ledger(self.workspace.ledger) as connection, connection:
             connection.execute(
                 """INSERT INTO attempts (id, delivery_id, plan_id, state, base_version, expected, metadata, started_at)
@@ -270,6 +279,7 @@ class Operator:
         state: str,
         version: int | None,
     ) -> dict[str, Any]:
+        # Update the attempt, delivery and optional plan outcome in the same SQLite transaction.
         with ledger(self.workspace.ledger) as connection, connection:
             connection.execute(
                 "UPDATE attempts SET state = ?, ended_at = ?, commit_version = ? WHERE id = ?",
@@ -292,6 +302,7 @@ class Operator:
         }
 
     def reconcile(self) -> list[dict[str, Any]]:
+        # Refuse to continue if a prior attempt requires manual reconciliation.
         with ledger(self.workspace.ledger) as connection:
             if row(
                 connection,
@@ -308,6 +319,7 @@ class Operator:
         for attempt in pending:
             versions = self.engine.commit_versions(attempt["metadata"])
             expected: list[list[Any]] = json.loads(attempt["expected"])
+            # A completed merge must have the next version and exactly the expected rows.
             if (
                 versions == [attempt["base_version"] + 1]
                 and expected
@@ -325,6 +337,7 @@ class Operator:
                     )
                 )
             elif not versions and self.engine.version == attempt["base_version"]:
+                # Record a replayable failure when Delta still has no matching commit or new version.
                 with ledger(self.workspace.ledger) as connection, connection:
                     connection.execute(
                         """UPDATE attempts SET state = 'FAILED_REPLAYABLE', reason = 'PRE_COMMIT_FAILURE',

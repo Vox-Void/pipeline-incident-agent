@@ -31,6 +31,7 @@ CREATE TABLE IF NOT EXISTS approvals (
 
 
 def open_ledger(path: Path, *, read_only: bool = False) -> sqlite3.Connection:
+    """Open a query-only ledger or initialize the tables on a writable connection."""
     target = f"{path.resolve().as_uri()}?mode=ro" if read_only else str(path)
     connection = sqlite3.connect(target, uri=read_only, timeout=10)
     connection.row_factory = sqlite3.Row

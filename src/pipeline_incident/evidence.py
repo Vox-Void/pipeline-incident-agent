@@ -42,6 +42,8 @@ class Evidence:
 
 
 class EvidenceReader:
+    """Serve ledger state, contract findings, downstream impact and a replay preview."""
+
     def __init__(
         self,
         workspace: Workspace,
@@ -59,6 +61,7 @@ class EvidenceReader:
     def dispatch(self, tool: str, target: str) -> Evidence:
         if tool not in TOOLS:
             raise PipelineError("UNKNOWN_TOOL", "Choose a read-only evidence tool.")
+        # Lineage tools take a dataset name. The other tools take this delivery's ID.
         if tool == "get_downstream_impact":
             data = self.impact(target)
         else:
@@ -119,6 +122,7 @@ class EvidenceReader:
             raise PipelineError(
                 "INVALID_LINEAGE_NODE", "Use a dataset in the current lineage registry."
             )
+        # Walk the graph once per dataset and return the reachable dependents in sorted order.
         seen = {start}
         pending = list(edges[start])
         while pending:

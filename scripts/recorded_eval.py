@@ -14,6 +14,8 @@ from pipeline_incident.evidence import TOOLS, Evidence
 
 
 class RecordedEvidence:
+    """Answer evidence requests from one saved investigation trace."""
+
     def __init__(self, report: dict[str, Any]):
         self.delivery_id: str = report["delivery_id"]
         self.successes = {}
@@ -58,6 +60,7 @@ def main() -> None:
         parser.error(
             "The requested cases must appear in the scripted Spark evaluation and committed goldens."
         )
+    # Grade the fixed runbook and the live planner on the same saved evidence.
     rows = []
     for case_id in args.cases:
         source = RecordedEvidence(captured[case_id])

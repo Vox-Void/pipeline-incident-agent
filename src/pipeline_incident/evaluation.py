@@ -56,6 +56,7 @@ def evaluate(
     suite = golden() if split != "challenge" else {}
     if split != "development":
         suite.update(challenges)
+    # Run both planners against the same prepared case and grade their decisions separately.
     for scenario, expected in suite.items():
         planners: list[Planner] = [
             RunbookBaseline(),
@@ -77,6 +78,7 @@ def evaluate(
                     "scores": grade(investigation, expected),
                 }
             )
+    # Summarize the saved scores, tool timings and token counts by planner mode.
     modes: dict[str, Any] = {}
     for mode in sorted({record["report"]["mode"] for record in records}):
         cases = [record for record in records if record["report"]["mode"] == mode]

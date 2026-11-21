@@ -67,6 +67,7 @@ def delivery_path(workspace: Workspace, delivery_id: str) -> Path:
 
 
 def describe(delivery_id: str, payload: bytes) -> Manifest:
+    """Check the JSON Lines file envelope and compute its seal."""
     if not payload or len(payload) > MAX_BYTES or not payload.endswith(b"\n") or b"\r" in payload:
         raise PipelineError(
             "INVALID_DELIVERY", "Expected a non-empty UTF-8 file with LF and a trailing LF."
@@ -85,6 +86,7 @@ def stage(workspace: Workspace, delivery_id: str, payload: bytes) -> Manifest:
     manifest = describe(delivery_id, payload)
     workspace.prepare()
     manifest_json = as_json(asdict(manifest))
+    # Register the seal in SQLite and accept a reused delivery ID with the same seal.
     with ledger(workspace.ledger) as connection, connection:
         existing = row(connection, "SELECT manifest FROM deliveries WHERE id = ?", (delivery_id,))
         if existing is None:
@@ -100,6 +102,7 @@ def stage(workspace: Workspace, delivery_id: str, payload: bytes) -> Manifest:
         if sha256(destination.read_bytes()) != manifest.file_sha256:
             raise PipelineError("MANIFEST_MISMATCH", "The watched file no longer matches its seal.")
         return manifest
+    # Flush the temporary file to disk and move it into the watched inbox.
     temporary = workspace.root / f".{delivery_id}.staged"
     with temporary.open("wb") as stream:
         stream.write(payload)

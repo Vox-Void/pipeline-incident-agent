@@ -8,7 +8,7 @@ if [[ "${1:-}" == "checks" ]]; then
     exec pytest -m 'not spark' "$@"
 fi
 
-# spark-submit execs a JVM. The lock descriptor stays open until the JVM exits.
+# Take the volume's writer lock and pass the open descriptor to the Spark JVM.
 mkdir -p "${PIPELINE_HOME:?}"
 exec 9>"$PIPELINE_HOME/.writer.lock"
 flock -x 9

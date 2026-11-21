@@ -2,6 +2,8 @@
 
 A local payments pipeline with an incident investigator and an operator-approved replay. It uses fictional ZAR payments to show how an on-call engineer can diagnose a failed delivery, check which reports are affected and restore the correct balance.
 
+The [project guide](docs/project-guide.md) explains how the project was built and follows a failed delivery through the code.
+
 ## Run it
 
 Use Bash on Linux or WSL2 with Docker and the Docker Compose plugin. Clone the repository, enter its directory and run these commands.

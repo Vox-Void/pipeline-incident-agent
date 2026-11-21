@@ -2,6 +2,7 @@ FROM eclipse-temurin:17.0.18_8-jre-jammy@sha256:642d45bf22d3cb9face159181732ed9f
 FROM ghcr.io/astral-sh/uv:0.13.9 AS uv
 FROM python:3.11.15-slim-bookworm@sha256:d29f48a31a8b408ed19272ca1e7b10ebae13b240a27e862d3d4217c528e2e0c3
 
+# Copy Java and uv into the Python image and set the Spark runtime paths.
 COPY --from=java /opt/java/openjdk /opt/java/openjdk
 COPY --from=uv /uv /usr/local/bin/uv
 ENV JAVA_HOME=/opt/java/openjdk \
@@ -15,6 +16,7 @@ COPY pyproject.toml uv.lock ./
 RUN uv sync --locked --no-install-project --python /usr/local/bin/python \
     && command -v flock \
     && java -version
+# Download and checksum the Delta connectors during the build.
 COPY scripts/download_jars.py /tmp/download_jars.py
 RUN python /tmp/download_jars.py
 COPY . .

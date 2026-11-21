@@ -14,6 +14,7 @@ fixture_id="${GITHUB_RUN_ID:-local}-${GITHUB_RUN_ATTEMPT:-1}-$$"
 mkdir -p artifacts
 
 for boundary in before-merge after-commit; do
+  # Create an isolated baseline and an approved replay for this boundary.
   namespace="crash-${fixture_id}-${boundary}"
   container="pipeline-${namespace}"
   ./scripts/dev stage --namespace "$namespace" --delivery BASELINE --fixture baseline
@@ -31,6 +32,7 @@ for boundary in before-merge after-commit; do
   docker compose run -d -T --name "$container" pipeline apply --namespace "$namespace" \
     --plan "$plan_id" --digest "$digest" --pause-at "$boundary" --fixture-mode
 
+  # Poll for the pause marker and stop polling if the writer exits.
   paused=false
   for ((attempt=0; attempt<120; attempt++)); do
     if docker logs "$container" 2>&1 | grep -F "PAUSED: $boundary" >/dev/null; then
@@ -67,7 +69,7 @@ for process in Path('/proc').iterdir():
         worker = process
 assert jvm and worker, 'Expected the Spark JVM and Python driver'
 assert (jvm / 'fd/9').readlink() == Path('/data/.writer.lock')
-# Keep the JVM alive long enough to probe the lock after the Python child dies.
+# Suspend the JVM with the lock open, then kill its Python child.
 os.kill(int(jvm.name), signal.SIGSTOP)
 os.kill(int(worker.name), signal.SIGKILL)
 print('Python driver killed while the Spark JVM still owns the writer lock')
@@ -85,6 +87,7 @@ PYTHON
   docker logs "$container" >"artifacts/crash-$boundary.log" 2>&1
   remove_writer
   container=""
+  # Reapply the plan twice in fresh containers and capture both responses and the final totals.
   ./scripts/dev apply --namespace "$namespace" --plan "$plan_id" --digest "$digest" --result-file "$namespace-first.json"
   ./scripts/dev apply --namespace "$namespace" --plan "$plan_id" --digest "$digest" --result-file "$namespace-repeat.json"
   ./scripts/dev totals --namespace "$namespace" --result-file "$namespace-totals.json"

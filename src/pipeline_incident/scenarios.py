@@ -111,6 +111,7 @@ def run_scenario(
     workspace = Workspace(Path(mkdtemp(prefix=f"{scenario.lower()}-", dir=home)))
     engine = Engine(spark, workspace)
     operator = Operator(workspace, engine, fixed_clock)
+    # Load the same baseline for every scenario, then apply the selected delivery or fault.
     baseline = deliver(operator, "BASELINE", BASELINE)
     delivery_id = "BASELINE"
     steps: list[dict[str, Any]] = [{"step": "baseline", **baseline}]
@@ -184,6 +185,7 @@ def run_scenario(
         )
         for planner in planners
     ]
+    # Apply the fixture correction or approved replay after recording the diagnosis.
     if scenario == "S03" and not diagnose_only:
         steps.append(
             deliver(
@@ -220,7 +222,7 @@ def run_scenario(
             )
         version_before = engine.version
         if scenario == "S06":
-            # The separate container test kills the writer at these same boundaries.
+            # Raise fixture failures before the merge and after the commit, then reconcile each attempt.
             for point in ("before-merge", "after-commit"):
                 try:
                     operator.apply(plan["plan_id"], plan["digest"], partial(inject_failure, point))

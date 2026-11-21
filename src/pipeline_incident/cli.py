@@ -83,6 +83,7 @@ def arguments() -> argparse.Namespace:
         parser.error(
             "--namespace must start with a lowercase letter and use lowercase letters, digits or hyphens"
         )
+    # Enable simulated failures only in crash fixture namespaces with fixture mode set.
     injecting = getattr(args, "fail_before_merge", False) or getattr(args, "pause_at", None)
     if injecting and (not args.fixture_mode or not args.namespace.startswith("crash-")):
         parser.error("failure injection requires --fixture-mode and a crash- namespace")
@@ -106,6 +107,7 @@ def test_failpoint(args: argparse.Namespace) -> Callable[[str], None]:
 
 
 def operator_command(args: argparse.Namespace, operator: Operator) -> dict[str, Any]:
+    """Run a command against the operator's workspace."""
     match args.command:
         case "stage":
             payloads = {"baseline": BASELINE, "replay": REPLAY, "broken": broken_contract()}
@@ -145,6 +147,7 @@ def run(args: argparse.Namespace, spark: SparkSession, home: Path, reports: Path
     if args.command == "smoke":
         return smoke(spark, Path(mkdtemp(prefix="smoke-", dir=home)) / "silver")
     if args.command == "integration":
+        # Compare committed totals and investigation decisions with the expected scenario results.
         expected = golden()
         results = []
         for scenario in (args.scenario,) if args.scenario else SCENARIOS:
@@ -176,6 +179,7 @@ def main() -> int:
     home = Path(os.environ.get("PIPELINE_HOME", "/data")).resolve()
     reports = Path(os.environ.get("PIPELINE_REPORTS", "/reports")).resolve()
     home.mkdir(parents=True, exist_ok=True)
+    # Open one Spark session for the command and close it before printing the result.
     spark = session()
     try:
         result = run(args, spark, home, reports)

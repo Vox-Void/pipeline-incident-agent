@@ -15,6 +15,7 @@ case "$command" in
     ;;
   demo|eval|stage|project|status|investigate|plan|approve|apply|reconcile|totals|smoke)
     compose=(docker compose)
+    # Add network and provider settings only for live mode.
     if [[ " $* " == *" --mode live "* ]]; then
       compose+=(-f compose.yaml -f compose.live.yaml)
     fi

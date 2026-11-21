@@ -46,6 +46,7 @@ class Candidate:
 def sealed_lines(
     workspace: Workspace, engine: Engine, delivery_id: str
 ) -> tuple[Manifest, list[str]]:
+    """Check the inbox file and Bronze copy against the registered seal."""
     manifest = load_manifest(workspace, delivery_id)
     file = delivery_path(workspace, delivery_id)
     if not file.is_file():
@@ -68,6 +69,7 @@ def sealed_lines(
 
 def validate_delivery(workspace: Workspace, engine: Engine, delivery_id: str) -> Candidate:
     manifest, lines = sealed_lines(workspace, engine, delivery_id)
+    # Index revisions in the batch and check that each payment has one merchant and date.
     snapshots: dict[tuple[str, int], Payment] = {}
     identities: dict[str, tuple[str, str]] = {}
     invalid: list[InvalidEvent] = []
@@ -87,6 +89,7 @@ def validate_delivery(workspace: Workspace, engine: Engine, delivery_id: str) ->
     if invalid:
         raise Blocked(invalid[0].code, [finding for error in invalid for finding in error.findings])
 
+    # Compare incoming identities and revision hashes with rows already in Silver.
     history = engine.history(set(identities))
     accepted = {}
     for payment in history:
@@ -95,6 +98,7 @@ def validate_delivery(workspace: Workspace, engine: Engine, delivery_id: str) ->
         if identities[payment_id] != identity:
             raise identity_conflict()
         accepted[(payment_id, int(payment["revision"]))] = str(payment["payload_hash"])
+    # Return new revisions in key order and count repeated rows separately.
     inserts = []
     for key, event in sorted(snapshots.items()):
         stored = accepted.get(key)

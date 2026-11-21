@@ -1,4 +1,4 @@
-"""Run a bounded investigation. The investigator has no replay command."""
+"""Collect evidence and verify the investigator's diagnosis and proposed action."""
 
 import json
 import os
@@ -72,6 +72,7 @@ def expected_decision(evidence: list[Evidence], failures: dict[str, str]) -> Dec
     if state in CLEAR:
         return Decision("NO_INCIDENT", "NONE", ids, [], "NONE", [])
     datasets = impact.data["potential_dependents"] if impact else []
+    # Require contract findings and lineage for both failure states, plus a preview for replay.
     needed = ["get_contract_findings", "get_downstream_impact"]
     if state == "FAILED_REPLAYABLE":
         needed.append("preview_recovery")
@@ -172,6 +173,7 @@ class OpenAIPlanner:
     def next(
         self, delivery_id: str, evidence: list[Evidence], failures: dict[str, str], deadline: float
     ) -> ToolCall | Decision:
+        # The response schema represents both an evidence tool request and a final decision.
         string = {"type": "string"}
         strings = {"type": "array", "items": string}
         fields = {
@@ -238,6 +240,7 @@ Set tool to finish to return a decision. Otherwise fill the tool name and target
             document = json.load(response)
         for name in self.usage:
             self.usage[name] += int(document.get("usage", {}).get(name, 0))
+        # Extract the single output message and check its field types before dispatch.
         messages = [
             item["text"]
             for output in document["output"]
@@ -271,6 +274,7 @@ Set tool to finish to return a decision. Otherwise fill the tool name and target
 def enforce_decision(
     proposal: Decision, evidence: list[Evidence], failures: dict[str, str]
 ) -> Decision:
+    # Recompute the decision from observed evidence and check the proposal's fields against it.
     expected = expected_decision(evidence, failures)
     supplied = {item.id for item in evidence}
     cited = set(proposal.evidence_ids)
@@ -311,6 +315,7 @@ def investigate(reader: EvidenceSource, planner: Planner) -> dict[str, Any]:
     decision = Decision(
         "NEEDS_HUMAN", "BUDGET_EXHAUSTED", [], [], "NONE", ["complete_investigation"]
     )
+    # Allow a final decision after the last permitted evidence call.
     for _ in range(MAX_CALLS + 1):
         if time.monotonic() >= deadline:
             break
@@ -336,6 +341,7 @@ def investigate(reader: EvidenceSource, planner: Planner) -> dict[str, Any]:
             break
         if len(trace) == MAX_CALLS:
             break
+        # Record each tool result or error, then pass the observations to the next planner step.
         called = time.monotonic()
         try:
             result = reader.dispatch(step.tool, step.target)

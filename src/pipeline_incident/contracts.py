@@ -27,6 +27,7 @@ def sha256(data: bytes) -> str:
 
 
 def line_digest(lines: list[str]) -> str:
+    """Hash the sorted line hashes, including repeated lines."""
     return sha256("".join(sorted(sha256(line.encode("utf-8")) for line in lines)).encode("ascii"))
 
 
@@ -110,6 +111,7 @@ def parse_payment(line: str) -> Payment:
     schema = validator(version)
     if isinstance(schema.schema, bool):
         raise RuntimeError("Payment contracts must be schema objects.")
+    # Collect missing fields, unexpected field names and invalid values as separate findings.
     findings: list[Finding] = []
     for name in schema.schema["required"]:
         if name not in data:
@@ -126,6 +128,7 @@ def parse_payment(line: str) -> Payment:
             )
     if findings:
         raise InvalidEvent("CONTRACT_MISMATCH", findings[:20])
+    # Check the event ID, calendar values and amount before normalizing the payment.
     accepted = cast(dict[str, Any], data)
     if accepted["event_id"] != f"{accepted['payment_id']}:{accepted['revision']}":
         raise InvalidEvent(
@@ -144,6 +147,7 @@ def parse_payment(line: str) -> Payment:
         raise InvalidEvent(
             "CONTRACT_MISMATCH", [Finding("INVALID_FIELD", "amount", "Amount must be positive.")]
         )
+    # Map both producer versions to the same Payment shape with a nullable channel.
     accepted.pop("schema_version")
     accepted.setdefault("channel", None)
     return Payment(**accepted)

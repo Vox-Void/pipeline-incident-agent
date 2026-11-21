@@ -26,6 +26,7 @@ def compare(old: dict[str, Any], new: dict[str, Any], *, new_version: bool) -> l
     new_fields = new["properties"]
     required = set(new["required"])
     changes: list[FieldChange] = []
+    # Classify additions, removals and changes to shared fields.
     for name in sorted(old_fields.keys() | new_fields.keys()):
         if name not in new_fields:
             change, result = "removed", "blocked"
@@ -63,6 +64,7 @@ def check(base: str | None) -> dict[str, Any]:
             {"field": "channel", "change": "version mapping mismatch", "result": "blocked"}
         )
     if base:
+        # Compare each version with the matching schema at the specified Git commit.
         for path, schema in schemas.items():
             previous = subprocess.run(
                 ["git", "show", f"{base}:{path}"], check=True, capture_output=True

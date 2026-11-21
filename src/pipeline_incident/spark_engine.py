@@ -22,6 +22,7 @@ from pyspark.sql.types import (
 from pipeline_incident.contracts import Payment
 from pipeline_incident.deliveries import MAX_ROWS, PipelineError, Workspace
 
+# Each Silver row stores a validated payment revision, its payload hash and its delivery ID.
 SILVER_SCHEMA = StructType(
     [
         StructField("event_id", StringType(), False),
@@ -78,6 +79,7 @@ class Engine:
         self.workspace = workspace
 
     def capture(self) -> None:
+        # Use the inbox filename as the delivery ID and keep the unparsed text of each line.
         source = self.spark.readStream.option("maxFilesPerTrigger", 1).text(
             str(self.workspace.inbox)
         )
@@ -85,6 +87,7 @@ class Engine:
             F.col("value").alias("raw_line"),
             F.input_file_name().alias("source_path"),
         ).withColumn("delivery_id", F.regexp_extract("source_path", r"/([^/]+)\.jsonl$", 1))
+        # Resume the checkpoint and stop after processing the files currently available.
         query = (
             bronze.writeStream.format("delta")
             .outputMode("append")
@@ -131,6 +134,7 @@ class Engine:
         return int(commit.version)
 
     def history(self, ids: set[str]) -> list[dict[str, Any]]:
+        """Fetch the stored identities and revision hashes for the requested payment IDs."""
         if not ids:
             return []
         limit = MAX_ROWS * 5
@@ -155,6 +159,7 @@ class Engine:
         return [record.asDict() for record in records]
 
     def payment_frame(self, payments: list[Payment], delivery_id: str) -> DataFrame:
+        """Convert payment strings to Spark dates, timestamps and exact decimals."""
         records: list[tuple[object, ...]] = []
         for payment in payments:
             (
@@ -188,6 +193,7 @@ class Engine:
         return self.spark.createDataFrame(records, SILVER_SCHEMA)
 
     def insert(self, payments: list[Payment], delivery_id: str, metadata: str) -> None:
+        # Attach operation metadata to this commit and insert only missing revision keys.
         self.spark.conf.set(METADATA, metadata)
         try:
             (
@@ -212,6 +218,7 @@ class Engine:
         return [int(commit.version) for commit in commits]
 
     def committed_rows(self, delivery_id: str, version: int, limit: int) -> list[list[Any]]:
+        """Read a delivery's revision hashes at the selected Silver version."""
         records = (
             self.spark.read.format("delta")
             .option("versionAsOf", version)
@@ -226,6 +233,7 @@ class Engine:
         )
 
     def totals(self, additional: list[Payment] | None = None) -> dict[str, Any]:
+        # Add any preview rows to the query, then select the highest revision per payment.
         history = self.silver.toDF()
         if additional:
             history = history.unionByName(self.payment_frame(additional, "PREVIEW"))
@@ -233,6 +241,7 @@ class Engine:
         current = (
             history.withColumn("rank", F.row_number().over(window)).where("rank = 1").drop("rank")
         )
+        # Group current payments by merchant and business date in separate status views.
         current.createOrReplaceTempView("payment_current")
         for status, view in (
             ("CAPTURED", "payments_daily_by_merchant"),
