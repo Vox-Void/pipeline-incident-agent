@@ -9,9 +9,9 @@ from typing import Any
 from uuid import uuid4
 
 from pipeline_incident.contracts import CONTRACT_VERSION, LINEAGE_VERSION, canonical, sha256
-from pipeline_incident.deliveries import PipelineError, Workspace
+from pipeline_incident.deliveries import Manifest, PipelineError, Workspace
 from pipeline_incident.ledger import as_json, ledger, row, rows
-from pipeline_incident.projection import Blocked, Candidate, validate_delivery
+from pipeline_incident.projection import Blocked, Candidate, sealed_lines, validate_delivery
 from pipeline_incident.spark_engine import Engine
 
 Clock = Callable[[], datetime]
@@ -43,6 +43,21 @@ class Operator:
         self.workspace.prepare()
         self.engine.capture()
         self.engine.ensure_silver()
+
+    def capture_delivery(self, delivery_id: str) -> Manifest:
+        self.capture()
+        try:
+            manifest, _ = sealed_lines(self.workspace, self.engine, delivery_id)
+        except Blocked as error:
+            if self.delivery(delivery_id)["state"] == "SEALED":
+                self.block(delivery_id, error)
+            raise
+        with ledger(self.workspace.ledger) as connection, connection:
+            connection.execute(
+                "UPDATE deliveries SET state = 'CAPTURED' WHERE id = ? AND state = 'SEALED'",
+                (delivery_id,),
+            )
+        return manifest
 
     def project(self, delivery_id: str, failpoint: Failpoint = no_failure) -> dict[str, Any]:
         self.reconcile()

@@ -3,7 +3,7 @@ import sqlite3
 
 import pytest
 
-from pipeline_incident.contracts import InvalidEvent, line_digest, parse_payment
+from pipeline_incident.contracts import ROOT, InvalidEvent, line_digest, parse_payment
 from pipeline_incident.deliveries import PipelineError, Workspace, describe, load_manifest, stage
 from pipeline_incident.fixtures import BASELINE, broken_contract, payment
 from pipeline_incident.ledger import ledger
@@ -65,3 +65,17 @@ def test_renamed_amount_is_a_field_level_diagnostic():
         ("MISSING_FIELD", "amount"),
         ("UNEXPECTED_FIELD", "amount_cents"),
     }
+
+
+FROZEN_CASES = json.loads((ROOT / "fixtures/golden/contract-cases.json").read_bytes())
+
+
+@pytest.mark.parametrize("case", FROZEN_CASES, ids=[case["case"] for case in FROZEN_CASES])
+def test_frozen_contract_example(case):
+    line = json.dumps(case["event"])
+    if "error" not in case:
+        assert parse_payment(line).payment_id == "P101"
+    else:
+        with pytest.raises(InvalidEvent) as error:
+            parse_payment(line)
+        assert error.value.code == case["error"]

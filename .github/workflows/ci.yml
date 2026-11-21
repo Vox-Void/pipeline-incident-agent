@@ -14,7 +14,58 @@ jobs:
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+      - name: Check the producer contract
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          mkdir -p artifacts
+          args=()
+          if [[ -n "$BASE_SHA" ]]; then args+=(--base "$BASE_SHA"); fi
+          python3 scripts/check_contracts.py "${args[@]}" | tee artifacts/contracts.json
       - name: Build and smoke test Delta
         run: ./scripts/dev bootstrap
       - name: Check Python and run Spark scenarios
         run: ./scripts/dev test
+      - name: Upload contract report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: contract-report
+          path: artifacts/contracts.json
+
+  recovery:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Build the local runtime
+        run: docker compose build pipeline
+      - name: Kill and restart the replay writer
+        run: bash scripts/crash-test
+      - name: Upload crash evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: crash-evidence
+          path: artifacts/crash-*.log
+
+  reports:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Build the local runtime
+        run: docker compose build pipeline
+      - name: Record both demos and evaluate the scripted investigators
+        run: |
+          ./scripts/dev demo --scenario S04
+          ./scripts/dev demo --scenario S03
+          ./scripts/dev eval
+      - name: Upload incident reports
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: incident-reports
+          path: artifacts/

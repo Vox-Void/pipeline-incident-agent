@@ -1,0 +1,108 @@
+#!/usr/bin/env bash
+set -euo pipefail
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
+
+container=""
+remove_writer() {
+  if [[ -n "$container" ]]; then
+    docker rm -f "$container" >/dev/null 2>&1 || true
+  fi
+}
+trap remove_writer EXIT
+
+fixture_id="${GITHUB_RUN_ID:-local}-${GITHUB_RUN_ATTEMPT:-1}-$$"
+mkdir -p artifacts
+
+for boundary in before-merge after-commit; do
+  namespace="crash-${fixture_id}-${boundary}"
+  container="pipeline-${namespace}"
+  ./scripts/dev stage --namespace "$namespace" --delivery BASELINE --fixture baseline
+  ./scripts/dev project --namespace "$namespace" --delivery BASELINE
+  ./scripts/dev stage --namespace "$namespace" --delivery RECOVERY --fixture replay
+  if ./scripts/dev project --namespace "$namespace" --delivery RECOVERY \
+    --fail-before-merge --fixture-mode; then
+    echo "Fixture must stop before committing" >&2
+    exit 1
+  fi
+
+  plan=$(./scripts/dev plan --namespace "$namespace" --delivery RECOVERY)
+  read -r plan_id digest < <(python3 -c 'import json, sys; p = json.load(sys.stdin); print(p["plan_id"], p["digest"])' <<< "$plan")
+  ./scripts/dev approve --namespace "$namespace" --plan "$plan_id" --digest "$digest" --actor crash-fixture
+  docker compose run -d -T --name "$container" pipeline apply --namespace "$namespace" \
+    --plan "$plan_id" --digest "$digest" --pause-at "$boundary" --fixture-mode
+
+  paused=false
+  for ((attempt=0; attempt<120; attempt++)); do
+    if docker logs "$container" 2>&1 | grep -F "PAUSED: $boundary" >/dev/null; then
+      paused=true
+      break
+    fi
+    if [[ $(docker inspect -f '{{.State.Running}}' "$container") != 'true' ]]; then
+      break
+    fi
+    sleep 1
+  done
+  if [[ "$paused" != 'true' ]]; then
+    docker logs "$container" >&2
+    exit 1
+  fi
+
+  if [[ "$boundary" == 'before-merge' ]]; then
+    docker exec -i "$container" python - <<'PYTHON'
+import os
+import signal
+from pathlib import Path
+
+jvm = worker = None
+for process in Path('/proc').iterdir():
+    if not process.name.isdecimal():
+        continue
+    try:
+        argv = (process / 'cmdline').read_bytes().split(b'\0')
+    except FileNotFoundError:
+        continue
+    if b'org.apache.spark.deploy.SparkSubmit' in argv and Path(os.fsdecode(argv[0])).name == 'java':
+        jvm = process
+    if b'/app/scripts/driver.py' in argv and Path(os.fsdecode(argv[0])).name.startswith('python'):
+        worker = process
+assert jvm and worker, 'Expected the Spark JVM and Python driver'
+assert (jvm / 'fd/9').readlink() == Path('/data/.writer.lock')
+# Keep the JVM alive long enough to probe the lock after the Python child dies.
+os.kill(int(jvm.name), signal.SIGSTOP)
+os.kill(int(worker.name), signal.SIGKILL)
+print('Python driver killed while the Spark JVM still owns the writer lock')
+PYTHON
+    docker compose run --rm -T --entrypoint bash pipeline -c '
+      if flock -n /data/.writer.lock -c true; then
+        echo "A second writer entered while the first JVM was alive" >&2
+        exit 1
+      fi
+      echo "Second writer blocked by the JVM lock"
+    '
+  fi
+
+  docker kill --signal KILL "$container"
+  docker logs "$container" >"artifacts/crash-$boundary.log" 2>&1
+  remove_writer
+  container=""
+  first=$(./scripts/dev apply --namespace "$namespace" --plan "$plan_id" --digest "$digest")
+  repeat=$(./scripts/dev apply --namespace "$namespace" --plan "$plan_id" --digest "$digest")
+  totals=$(./scripts/dev totals --namespace "$namespace")
+  python3 - "$boundary" "$first" "$repeat" "$totals" >>"artifacts/crash-$boundary.log" <<'PYTHON'
+import json
+import sys
+
+boundary = sys.argv[1]
+first, repeat, totals = map(json.loads, sys.argv[2:])
+assert first['status'] == repeat['status'] == 'APPLIED'
+assert first['operation_id'] == repeat['operation_id']
+assert repeat['repeated'] is True
+if boundary == 'before-merge':
+    assert first['commit_version'] == 2
+else:
+    assert first['repeated'] is True
+assert totals == {'history_rows': 5, 'current_payments': 5, 'captured': '76.75', 'refunded': '0.00'}
+print(json.dumps({'boundary': boundary, 'first': first, 'repeat': repeat, 'totals': totals}, indent=2))
+PYTHON
+  echo "$boundary crash recovery passed"
+done

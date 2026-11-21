@@ -43,6 +43,7 @@ def grade(report: dict[str, Any], expected: dict[str, Any]) -> dict[str, Any]:
 
 def evaluate(spark: SparkSession, home: Path, report_root: Path, *, live: bool) -> dict[str, Any]:
     directory = Path(mkdtemp(prefix="eval-", dir=report_root))
+    directory.chmod(0o755)
     records = []
     for scenario, expected in golden().items():
         selected = OpenAIPlanner() if live else ScriptedPlanner()

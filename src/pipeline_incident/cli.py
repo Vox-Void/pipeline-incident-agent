@@ -99,10 +99,10 @@ def operator_command(args: argparse.Namespace, operator: Operator) -> dict[str, 
     match args.command:
         case "stage":
             payloads = {"baseline": BASELINE, "replay": REPLAY, "broken": broken_contract()}
-            manifest = stage(operator.workspace, args.delivery, payloads[args.fixture])
-            operator.capture()
+            stage(operator.workspace, args.delivery, payloads[args.fixture])
+            manifest = operator.capture_delivery(args.delivery)
             return {
-                "status": "CAPTURED",
+                "status": operator.delivery(args.delivery)["state"],
                 "delivery_id": args.delivery,
                 "manifest_digest": manifest.digest,
             }
@@ -153,6 +153,7 @@ def run(args: argparse.Namespace, spark: SparkSession, home: Path, reports: Path
         planner = OpenAIPlanner() if args.mode == "live" else ScriptedPlanner()
         result = run_scenario(spark, home, args.scenario, [planner])
         directory = Path(mkdtemp(prefix=f"demo-{args.scenario.lower()}-", dir=reports))
+        directory.chmod(0o755)
         report = directory / "report.json"
         report.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
         return {**result, "report": str(report)}

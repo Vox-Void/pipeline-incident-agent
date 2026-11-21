@@ -1,0 +1,6 @@
+[
+  {"case": "v1 accepted", "event": {"schema_version":1,"event_id":"P101:1","payment_id":"P101","merchant_id":"M1","revision":1,"occurred_at":"2026-01-07T09:15:00Z","payment_date":"2026-01-07","status":"CAPTURED","currency":"ZAR","amount":"10.00"}},
+  {"case": "v2 optional channel", "event": {"schema_version":2,"event_id":"P101:1","payment_id":"P101","merchant_id":"M1","revision":1,"occurred_at":"2026-01-07T09:15:00Z","payment_date":"2026-01-07","status":"REFUNDED","currency":"ZAR","amount":"10.00","channel":"WEB"}},
+  {"case": "unannounced rename", "error": "CONTRACT_MISMATCH", "event": {"schema_version":1,"event_id":"P101:1","payment_id":"P101","merchant_id":"M1","revision":1,"occurred_at":"2026-01-07T09:15:00Z","payment_date":"2026-01-07","status":"CAPTURED","currency":"ZAR","amount_cents":1000}},
+  {"case": "invalid structured field", "error": "CONTRACT_MISMATCH", "event": {"schema_version":1,"event_id":"P101:1","payment_id":"P101","merchant_id":"M1","revision":1,"occurred_at":"2026-01-07T09:15:00Z","payment_date":"2026-01-07","status":"REFUNDED","currency":"ZAR","amount":10.00}}
+]
