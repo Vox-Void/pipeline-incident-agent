@@ -1,0 +1,11 @@
+{
+  "S01": {"history_rows": 3, "current_payments": 3, "captured": "39.75", "refunded": "0.00", "cause_code": "NONE", "disposition": "NO_INCIDENT", "action": "NONE"},
+  "S02": {"history_rows": 6, "current_payments": 4, "captured": "27.00", "refunded": "25.50", "cause_code": "NONE", "disposition": "NO_INCIDENT", "action": "NONE"},
+  "S03": {"history_rows": 5, "current_payments": 5, "captured": "131.75", "refunded": "0.00", "cause_code": "CONTRACT_MISMATCH", "disposition": "DIAGNOSED", "action": "CORRECT_AND_REDELIVER"},
+  "S04": {"history_rows": 5, "current_payments": 5, "captured": "76.75", "refunded": "0.00", "cause_code": "PRE_COMMIT_FAILURE", "disposition": "DIAGNOSED", "action": "REQUEST_APPROVED_REPLAY"},
+  "S05": {"history_rows": 6, "current_payments": 6, "captured": "78.00", "refunded": "0.00", "cause_code": "PRE_COMMIT_FAILURE", "disposition": "DIAGNOSED", "action": "REQUEST_APPROVED_REPLAY"},
+  "S06": {"history_rows": 5, "current_payments": 5, "captured": "76.75", "refunded": "0.00", "cause_code": "PRE_COMMIT_FAILURE", "disposition": "DIAGNOSED", "action": "REQUEST_APPROVED_REPLAY"},
+  "S07": {"history_rows": 3, "current_payments": 3, "captured": "39.75", "refunded": "0.00", "cause_code": "REVISION_CONFLICT", "disposition": "DIAGNOSED", "action": "CORRECT_AND_REDELIVER"},
+  "S08": {"history_rows": 3, "current_payments": 3, "captured": "39.75", "refunded": "0.00", "cause_code": "EVIDENCE_INCOMPLETE", "disposition": "NEEDS_HUMAN", "action": "NONE"},
+  "S09": {"history_rows": 4, "current_payments": 4, "captured": "44.75", "refunded": "0.00", "cause_code": "UNSUPPORTED_VERSION", "disposition": "DIAGNOSED", "action": "CORRECT_AND_REDELIVER"}
+}

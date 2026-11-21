@@ -11,8 +11,10 @@ permissions:
 jobs:
   spark-delta:
     runs-on: ubuntu-24.04
-    timeout-minutes: 25
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
       - name: Build and smoke test Delta
         run: ./scripts/dev bootstrap
+      - name: Check Python and run Spark scenarios
+        run: ./scripts/dev test

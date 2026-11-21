@@ -1,0 +1,13 @@
+{
+  "version": "payments-lineage/1",
+  "edges": {
+    "bronze.raw_payments": ["silver.payment_revisions"],
+    "silver.payment_revisions": ["analytics.payment_current"],
+    "analytics.payment_current": [
+      "analytics.payments_daily_by_merchant",
+      "analytics.refunds_daily_by_merchant"
+    ],
+    "analytics.payments_daily_by_merchant": [],
+    "analytics.refunds_daily_by_merchant": []
+  }
+}

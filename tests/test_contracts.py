@@ -1,0 +1,67 @@
+import json
+import sqlite3
+
+import pytest
+
+from pipeline_incident.contracts import InvalidEvent, line_digest, parse_payment
+from pipeline_incident.deliveries import PipelineError, Workspace, describe, load_manifest, stage
+from pipeline_incident.fixtures import BASELINE, broken_contract, payment
+from pipeline_incident.ledger import ledger
+
+
+def test_sealed_fixture_is_stable(tmp_path):
+    workspace = Workspace(tmp_path)
+    manifest = stage(workspace, "BASELINE", BASELINE)
+
+    assert stage(workspace, "BASELINE", BASELINE) == manifest
+    assert load_manifest(workspace, "BASELINE") == manifest
+    assert manifest.line_count == 3
+    assert line_digest(["a", "b", "a"]) == line_digest(["b", "a", "a"])
+    assert line_digest(["a", "b", "a"]) != line_digest(["a", "b"])
+    with pytest.raises(PipelineError, match="different delivery bytes"):
+        stage(workspace, "BASELINE", broken_contract())
+    with (
+        ledger(workspace.ledger, read_only=True) as connection,
+        pytest.raises(sqlite3.OperationalError),
+    ):
+        connection.execute("DELETE FROM deliveries")
+
+
+@pytest.mark.parametrize("payload", [b"{}", b"{}\r\n", b"\n", b"\xff\n"])
+def test_rejects_unsealed_input(payload):
+    with pytest.raises(PipelineError) as error:
+        describe("BASELINE", payload)
+    assert error.value.code == "INVALID_DELIVERY"
+
+
+@pytest.mark.parametrize(
+    "amount", [0, 0.1, "0.00", "-1.00", "01.00", "1.0", "10000000000000000.00", "1.00\n"]
+)
+def test_rejects_invalid_decimal(amount):
+    with pytest.raises(InvalidEvent) as error:
+        parse_payment(json.dumps(payment("P100", amount)))
+    assert "amount" in {finding.field for finding in error.value.findings}
+
+
+def test_version_two_without_channel_is_an_exact_business_duplicate():
+    v1 = parse_payment(json.dumps(payment("P100", "10.00")))
+    v2 = parse_payment(json.dumps(payment("P100", "10.00", version=2)))
+    with_channel = parse_payment(json.dumps(payment("P100", "10.00", version=2, channel="APP")))
+
+    assert v1.digest == v2.digest
+    assert with_channel.digest != v2.digest
+
+
+def test_rejects_duplicate_json_keys():
+    with pytest.raises(InvalidEvent) as error:
+        parse_payment('{"amount":"1.00","amount":"2.00"}')
+    assert error.value.code == "MALFORMED_JSON"
+
+
+def test_renamed_amount_is_a_field_level_diagnostic():
+    with pytest.raises(InvalidEvent) as error:
+        parse_payment(broken_contract().decode().splitlines()[0])
+    assert {(finding.code, finding.field) for finding in error.value.findings} == {
+        ("MISSING_FIELD", "amount"),
+        ("UNEXPECTED_FIELD", "amount_cents"),
+    }

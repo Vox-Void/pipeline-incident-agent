@@ -13,7 +13,7 @@ case "$command" in
     docker compose run --rm -T pipeline checks
     docker compose run --rm -T pipeline integration "$@"
     ;;
-  demo|eval|stage|status|investigate|plan|approve|apply|reconcile|totals|smoke)
+  demo|eval|stage|project|status|investigate|plan|approve|apply|reconcile|totals|smoke)
     compose=(docker compose)
     if [[ " $* " == *" --mode live "* ]]; then
       compose+=(-f compose.yaml -f compose.live.yaml)
@@ -21,7 +21,7 @@ case "$command" in
     "${compose[@]}" run --rm -T pipeline "$command" "$@"
     ;;
   *)
-    echo "Usage: scripts/dev {bootstrap|test|demo|eval|stage|status|investigate|plan|approve|apply|reconcile|totals|smoke}" >&2
+    echo "Usage: scripts/dev {bootstrap|test|demo|eval|stage|project|status|investigate|plan|approve|apply|reconcile|totals|smoke}" >&2
     exit 2
     ;;
 esac
