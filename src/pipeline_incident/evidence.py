@@ -17,6 +17,14 @@ TOOLS = (
     "get_downstream_impact",
     "preview_recovery",
 )
+DATA_STATUS = {
+    "SEALED": "DELIVERY_PENDING",
+    "CAPTURED": "DELIVERY_PENDING",
+    "EXECUTING": "DELIVERY_PENDING",
+    "BLOCKED": "DELIVERY_DELAYED",
+    "FAILED_REPLAYABLE": "DELIVERY_DELAYED",
+    "NEEDS_RECONCILIATION": "UNVERIFIED",
+}
 
 
 @dataclass(frozen=True)
@@ -83,9 +91,7 @@ class EvidenceReader:
             "attempt": last_attempt,
             "sealed_rows": manifest.line_count,
             "silver_version": self.engine.version,
-            "data_status": "DELIVERY_DELAYED"
-            if delivery["state"] in {"FAILED_REPLAYABLE", "BLOCKED"}
-            else "NO_DELAY_RECORDED",
+            "data_status": DATA_STATUS.get(delivery["state"], "NO_DELAY_RECORDED"),
         }
 
     def findings(self) -> dict[str, Any]:

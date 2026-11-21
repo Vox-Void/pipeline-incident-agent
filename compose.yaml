@@ -4,6 +4,7 @@ services:
       context: .
     image: pipeline-incident-agent:local
     init: true
+    hostname: localhost
     network_mode: none
     volumes:
       - pipeline-data:/data

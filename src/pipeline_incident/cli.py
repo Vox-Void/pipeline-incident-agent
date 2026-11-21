@@ -38,6 +38,10 @@ def arguments() -> argparse.Namespace:
         command.add_argument("--mode", choices=("scripted", "live"), default="scripted")
         if name == "demo":
             command.add_argument("--scenario", choices=SCENARIOS, default="S04")
+        if name == "eval":
+            command.add_argument(
+                "--split", choices=("all", "development", "challenge"), default="all"
+            )
     for name in (
         "stage",
         "project",
@@ -68,7 +72,13 @@ def arguments() -> argparse.Namespace:
             command.add_argument("--fixture-mode", action="store_true")
         if name == "project":
             command.add_argument("--fail-before-merge", action="store_true")
+    for command in commands.choices.values():
+        command.add_argument(
+            "--result-file", help="Write the JSON result to this filename under artifacts/."
+        )
     args = parser.parse_args()
+    if args.result_file and not re.fullmatch(r"[a-z0-9][a-z0-9_.-]{0,95}\.json", args.result_file):
+        parser.error("--result-file must be a lowercase JSON filename without a directory")
     if hasattr(args, "namespace") and not re.fullmatch(r"[a-z][a-z0-9-]{0,47}", args.namespace):
         parser.error(
             "--namespace must start with a lowercase letter and use lowercase letters, digits or hyphens"
@@ -99,10 +109,10 @@ def operator_command(args: argparse.Namespace, operator: Operator) -> dict[str, 
     match args.command:
         case "stage":
             payloads = {"baseline": BASELINE, "replay": REPLAY, "broken": broken_contract()}
-            manifest = stage(operator.workspace, args.delivery, payloads[args.fixture])
-            operator.capture()
+            stage(operator.workspace, args.delivery, payloads[args.fixture])
+            manifest = operator.capture_delivery(args.delivery)
             return {
-                "status": "CAPTURED",
+                "status": operator.delivery(args.delivery)["state"],
                 "delivery_id": args.delivery,
                 "manifest_digest": manifest.digest,
             }
@@ -149,10 +159,11 @@ def run(args: argparse.Namespace, spark: SparkSession, home: Path, reports: Path
     if args.command in {"demo", "eval"}:
         reports.mkdir(parents=True, exist_ok=True)
         if args.command == "eval":
-            return evaluate(spark, home, reports, live=args.mode == "live")
+            return evaluate(spark, home, reports, live=args.mode == "live", split=args.split)
         planner = OpenAIPlanner() if args.mode == "live" else ScriptedPlanner()
         result = run_scenario(spark, home, args.scenario, [planner])
         directory = Path(mkdtemp(prefix=f"demo-{args.scenario.lower()}-", dir=reports))
+        directory.chmod(0o755)
         report = directory / "report.json"
         report.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
         return {**result, "report": str(report)}
@@ -173,5 +184,9 @@ def main() -> int:
         return 1
     finally:
         spark.stop()
-    print(json.dumps(result, indent=2))
-    return 0
+    rendered = json.dumps(result, indent=2) + "\n"
+    if args.result_file:
+        reports.mkdir(parents=True, exist_ok=True)
+        (reports / args.result_file).write_text(rendered, encoding="utf-8")
+    print(rendered, end="")
+    return 0 if result.get("passed", True) else 1

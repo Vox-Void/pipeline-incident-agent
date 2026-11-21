@@ -5,12 +5,13 @@ import os
 import time
 from dataclasses import asdict, dataclass
 from typing import Any, Protocol
+from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 from uuid import uuid4
 
 from pipeline_incident.contracts import CONTRACT_VERSION, LINEAGE_VERSION
 from pipeline_incident.deliveries import PipelineError
-from pipeline_incident.evidence import ROOT_NODE, TOOLS, Evidence, EvidenceReader
+from pipeline_incident.evidence import ROOT_NODE, TOOLS, Evidence
 
 MAX_CALLS = 6
 DEADLINE_SECONDS = 30
@@ -46,6 +47,12 @@ class Planner(Protocol):
     ) -> ToolCall | Decision: ...
 
 
+class EvidenceSource(Protocol):
+    delivery_id: str
+
+    def dispatch(self, tool: str, target: str) -> Evidence: ...
+
+
 def by_tool(evidence: list[Evidence]) -> dict[str, Evidence]:
     return {item.tool: item for item in evidence}
 
@@ -69,6 +76,8 @@ def expected_decision(evidence: list[Evidence], failures: dict[str, str]) -> Dec
     if state == "FAILED_REPLAYABLE":
         needed.append("preview_recovery")
     missing = [tool for tool in needed if tool not in available or tool in failures]
+    if impact is not None and impact.target != ROOT_NODE and "get_downstream_impact" not in missing:
+        missing.append("get_downstream_impact")
     if missing or state not in {"FAILED_REPLAYABLE", "BLOCKED"} or findings is None:
         return Decision(
             "NEEDS_HUMAN",
@@ -291,13 +300,14 @@ def enforce_decision(
     )
 
 
-def investigate(reader: EvidenceReader, planner: Planner) -> dict[str, Any]:
+def investigate(reader: EvidenceSource, planner: Planner) -> dict[str, Any]:
     start = time.monotonic()
     deadline = start + DEADLINE_SECONDS
     run_id = uuid4().hex
     evidence: list[Evidence] = []
     failures: dict[str, str] = {}
     trace: list[dict[str, Any]] = []
+    provider_error = None
     decision = Decision(
         "NEEDS_HUMAN", "BUDGET_EXHAUSTED", [], [], "NONE", ["complete_investigation"]
     )
@@ -306,7 +316,10 @@ def investigate(reader: EvidenceReader, planner: Planner) -> dict[str, Any]:
             break
         try:
             step = planner.next(reader.delivery_id, evidence, failures, deadline)
-        except (OSError, ValueError, TypeError, KeyError):
+        except (OSError, ValueError, TypeError, KeyError) as error:
+            provider_error = (
+                f"HTTP_{error.code}" if isinstance(error, HTTPError) else type(error).__name__
+            )
             decision = Decision(
                 "NEEDS_HUMAN",
                 "PROVIDER_UNAVAILABLE",
@@ -337,6 +350,7 @@ def investigate(reader: EvidenceReader, planner: Planner) -> dict[str, Any]:
             )
         else:
             evidence.append(result)
+            failures.pop(result.tool, None)
             trace.append(
                 {
                     "tool": result.tool,
@@ -360,5 +374,6 @@ def investigate(reader: EvidenceReader, planner: Planner) -> dict[str, Any]:
         "evidence": [item.document() for item in evidence],
         "trace": trace,
         "usage": dict(planner.usage),
+        "provider_error": provider_error,
         "duration_ms": round((time.monotonic() - start) * 1000),
     }

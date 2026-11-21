@@ -9,9 +9,9 @@ from typing import Any
 from uuid import uuid4
 
 from pipeline_incident.contracts import CONTRACT_VERSION, LINEAGE_VERSION, canonical, sha256
-from pipeline_incident.deliveries import PipelineError, Workspace
+from pipeline_incident.deliveries import Manifest, PipelineError, Workspace
 from pipeline_incident.ledger import as_json, ledger, row, rows
-from pipeline_incident.projection import Blocked, Candidate, validate_delivery
+from pipeline_incident.projection import Blocked, Candidate, sealed_lines, validate_delivery
 from pipeline_incident.spark_engine import Engine
 
 Clock = Callable[[], datetime]
@@ -43,6 +43,21 @@ class Operator:
         self.workspace.prepare()
         self.engine.capture()
         self.engine.ensure_silver()
+
+    def capture_delivery(self, delivery_id: str) -> Manifest:
+        self.capture()
+        try:
+            manifest, _ = sealed_lines(self.workspace, self.engine, delivery_id)
+        except Blocked as error:
+            if self.delivery(delivery_id)["state"] == "SEALED":
+                self.block(delivery_id, error)
+            raise
+        with ledger(self.workspace.ledger) as connection, connection:
+            connection.execute(
+                "UPDATE deliveries SET state = 'CAPTURED' WHERE id = ? AND state = 'SEALED'",
+                (delivery_id,),
+            )
+        return manifest
 
     def project(self, delivery_id: str, failpoint: Failpoint = no_failure) -> dict[str, Any]:
         self.reconcile()
@@ -293,7 +308,12 @@ class Operator:
         for attempt in pending:
             versions = self.engine.commit_versions(attempt["metadata"])
             expected: list[list[Any]] = json.loads(attempt["expected"])
-            if versions == [attempt["base_version"] + 1] and self.matches_commit(attempt, expected):
+            if (
+                versions == [attempt["base_version"] + 1]
+                and expected
+                and self.engine.committed_rows(attempt["delivery_id"], versions[0], len(expected))
+                == expected
+            ):
                 state = "APPLIED" if attempt["plan_id"] else "PROJECTED"
                 results.append(
                     self.finish(
@@ -336,14 +356,3 @@ class Operator:
                     "NEEDS_RECONCILIATION", "Delta history did not match the recorded insert set."
                 )
         return results
-
-    def matches_commit(self, attempt: dict[str, Any], expected: list[list[Any]]) -> bool:
-        keys = {(entry[0], entry[1]) for entry in expected}
-        history = self.engine.history({entry[0] for entry in expected})
-        committed = sorted(
-            [record["payment_id"], record["revision"], record["payload_hash"]]
-            for record in history
-            if (record["payment_id"], record["revision"]) in keys
-            and record["delivery_id"] == attempt["delivery_id"]
-        )
-        return bool(expected) and committed == expected

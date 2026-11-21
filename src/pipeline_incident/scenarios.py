@@ -9,7 +9,7 @@ from typing import Any
 from pyspark.sql import SparkSession
 
 from pipeline_incident.agent import Planner, investigate
-from pipeline_incident.deliveries import PipelineError, Workspace, stage
+from pipeline_incident.deliveries import PipelineError, Workspace, delivery_path, stage
 from pipeline_incident.evidence import EvidenceReader
 from pipeline_incident.fixtures import BASELINE, REPLAY, broken_contract, jsonl, payment
 from pipeline_incident.operations import Operator
@@ -47,8 +47,10 @@ def expect_pipeline_error(code: str, call: Any, *args: Any) -> dict[str, str]:
     raise AssertionError(f"Expected {code}")
 
 
-def replay_fixture(operator: Operator, delivery_id: str = "RECOVERY") -> dict[str, Any]:
-    stage(operator.workspace, delivery_id, REPLAY)
+def replay_fixture(
+    operator: Operator, delivery_id: str = "RECOVERY", payload: bytes = REPLAY
+) -> dict[str, Any]:
+    stage(operator.workspace, delivery_id, payload)
     operator.capture()
     try:
         operator.project(delivery_id, lambda phase: inject_failure("before-merge", phase))
@@ -57,6 +59,45 @@ def replay_fixture(operator: Operator, delivery_id: str = "RECOVERY") -> dict[st
     else:
         raise AssertionError("The pre-commit fixture did not stop the write.")
     return operator.reconcile()[0]
+
+
+def run_challenge(
+    spark: SparkSession, home: Path, scenario: str, seed: int, fault: str, planners: list[Planner]
+) -> list[dict[str, Any]]:
+    workspace = Workspace(Path(mkdtemp(prefix=f"{scenario.lower()}-", dir=home)))
+    engine = Engine(spark, workspace)
+    operator = Operator(workspace, engine, fixed_clock)
+    deliver(operator, "BASELINE", BASELINE)
+    delivery_id = f"BATCH-{seed}"
+    event = payment(f"P{1000 + seed}", "6.30", merchant="M3", version=2, channel="WEB")
+    match fault:
+        case "currency":
+            event["currency"] = "USD"
+            expect_pipeline_error(
+                "CONTRACT_MISMATCH", deliver, operator, delivery_id, jsonl([event])
+            )
+        case "manifest":
+            stage(workspace, delivery_id, jsonl([event]))
+            operator.capture()
+            delivery_path(workspace, delivery_id).unlink()
+            expect_pipeline_error("MISSING_DELIVERY", operator.project, delivery_id)
+        case "lineage":
+            replay_fixture(operator, delivery_id, jsonl([event]))
+        case _:
+            raise ValueError(f"Unknown challenge fault {fault}")
+    assert engine.totals() == {
+        "history_rows": 3,
+        "current_payments": 3,
+        "captured": "39.75",
+        "refunded": "0.00",
+    }
+    return [
+        investigate(
+            EvidenceReader(workspace, engine, delivery_id, lineage_available=fault != "lineage"),
+            planner,
+        )
+        for planner in planners
+    ]
 
 
 def run_scenario(

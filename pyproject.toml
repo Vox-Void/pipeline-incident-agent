@@ -33,4 +33,4 @@ ignore = ["E501"]
 [tool.mypy]
 python_version = "3.11"
 strict = true
-files = ["src"]
+files = ["src", "scripts/check_contracts.py", "scripts/recorded_eval.py"]

@@ -1,0 +1,147 @@
+{
+  "scenario": "S03",
+  "workspace": "/data/s03-gi_zjjtz",
+  "before": {
+    "history_rows": 3,
+    "current_payments": 3,
+    "captured": "39.75",
+    "refunded": "0.00"
+  },
+  "after": {
+    "history_rows": 5,
+    "current_payments": 5,
+    "captured": "131.75",
+    "refunded": "0.00"
+  },
+  "steps": [
+    {
+      "step": "baseline",
+      "status": "PROJECTED",
+      "delivery_id": "BASELINE",
+      "operation_id": "a6e1a4bac541461c905385a2d8589287",
+      "plan_id": null,
+      "commit_version": 1
+    },
+    {
+      "status": "REFUSED",
+      "reason": "CONTRACT_MISMATCH"
+    },
+    {
+      "status": "PROJECTED",
+      "delivery_id": "CORRECTED",
+      "operation_id": "9fd529487ace4845be161f1ff3d85cf0",
+      "plan_id": null,
+      "commit_version": 2
+    }
+  ],
+  "investigations": [
+    {
+      "run_id": "79ff790a0b2f4b5d95d802b2e354843b",
+      "delivery_id": "BROKEN",
+      "mode": "scripted",
+      "model": null,
+      "contract_version": "payments/1+2",
+      "lineage_version": "payments-lineage/1",
+      "prompt_version": "incident-investigation/1",
+      "data_status": "DELIVERY_DELAYED",
+      "decision": {
+        "disposition": "DIAGNOSED",
+        "cause_code": "CONTRACT_MISMATCH",
+        "evidence_ids": [
+          "e-4d208054d967175f",
+          "e-80cdc6d60454e559",
+          "e-84c7ccc3a7277a48"
+        ],
+        "impacted_datasets": [
+          "analytics.payment_current",
+          "analytics.payments_daily_by_merchant",
+          "analytics.refunds_daily_by_merchant",
+          "silver.payment_revisions"
+        ],
+        "suggested_action": "CORRECT_AND_REDELIVER",
+        "missing_evidence": []
+      },
+      "evidence": [
+        {
+          "id": "e-80cdc6d60454e559",
+          "tool": "get_delivery_status",
+          "target": "BROKEN",
+          "data": {
+            "state": "BLOCKED",
+            "reason": "CONTRACT_MISMATCH",
+            "attempt": {
+              "id": "080373a7fb70429faa5849de270dffd6",
+              "started_at": "2026-01-07T10:00:00+00:00",
+              "ended_at": "2026-01-07T10:00:00+00:00",
+              "commit_version": null
+            },
+            "sealed_rows": 2,
+            "silver_version": 1,
+            "data_status": "DELIVERY_DELAYED"
+          }
+        },
+        {
+          "id": "e-84c7ccc3a7277a48",
+          "tool": "get_contract_findings",
+          "target": "BROKEN",
+          "data": {
+            "reason": "CONTRACT_MISMATCH",
+            "manifest_digest": "cc478b20a4e92681703edc640691d7bd3d3569ebd7d5a1ef9c9eaeb556db6f1c",
+            "findings": [
+              {
+                "code": "MISSING_FIELD",
+                "detail": "Required field missing.",
+                "field": "amount"
+              },
+              {
+                "code": "UNEXPECTED_FIELD",
+                "detail": "Field is outside this contract.",
+                "field": "amount_cents"
+              }
+            ]
+          }
+        },
+        {
+          "id": "e-4d208054d967175f",
+          "tool": "get_downstream_impact",
+          "target": "bronze.raw_payments",
+          "data": {
+            "lineage_version": "payments-lineage/1",
+            "potential_dependents": [
+              "analytics.payment_current",
+              "analytics.payments_daily_by_merchant",
+              "analytics.refunds_daily_by_merchant",
+              "silver.payment_revisions"
+            ]
+          }
+        }
+      ],
+      "trace": [
+        {
+          "tool": "get_delivery_status",
+          "target": "BROKEN",
+          "status": "OK",
+          "evidence_id": "e-80cdc6d60454e559",
+          "duration_ms": 197
+        },
+        {
+          "tool": "get_contract_findings",
+          "target": "BROKEN",
+          "status": "OK",
+          "evidence_id": "e-84c7ccc3a7277a48",
+          "duration_ms": 1
+        },
+        {
+          "tool": "get_downstream_impact",
+          "target": "bronze.raw_payments",
+          "status": "OK",
+          "evidence_id": "e-4d208054d967175f",
+          "duration_ms": 0
+        }
+      ],
+      "usage": {},
+      "provider_error": null,
+      "duration_ms": 199
+    }
+  ]
+}

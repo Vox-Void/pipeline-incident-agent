@@ -1,0 +1,625 @@
+{
+  "run_at": "2026-11-21T14:50:13.260946+00:00",
+  "fixture_version": "scenarios/1+challenge/1",
+  "evidence_source": "recorded from real Spark/Delta evaluation",
+  "requested_cases": [
+    "S04",
+    "S08",
+    "C01"
+  ],
+  "cases": [
+    {
+      "scenario": "S04",
+      "report": {
+        "run_id": "355f2cbbae204207a2bad27811b00764",
+        "delivery_id": "RECOVERY",
+        "mode": "runbook",
+        "model": null,
+        "contract_version": "payments/1+2",
+        "lineage_version": "payments-lineage/1",
+        "prompt_version": "incident-investigation/1",
+        "data_status": "DELIVERY_DELAYED",
+        "decision": {
+          "disposition": "DIAGNOSED",
+          "cause_code": "PRE_COMMIT_FAILURE",
+          "evidence_ids": [
+            "e-440645294515c3ff",
+            "e-4d208054d967175f",
+            "e-979bd0963f8f3a9a",
+            "e-e6d61335c1620b85"
+          ],
+          "impacted_datasets": [
+            "analytics.payment_current",
+            "analytics.payments_daily_by_merchant",
+            "analytics.refunds_daily_by_merchant",
+            "silver.payment_revisions"
+          ],
+          "suggested_action": "REQUEST_APPROVED_REPLAY",
+          "missing_evidence": []
+        },
+        "evidence": [
+          {
+            "id": "e-e6d61335c1620b85",
+            "tool": "get_delivery_status",
+            "target": "RECOVERY",
+            "data": {
+              "state": "FAILED_REPLAYABLE",
+              "reason": "PRE_COMMIT_FAILURE",
+              "attempt": {
+                "id": "450da81f725046eab14e2981fe60d80d",
+                "started_at": "2026-01-07T10:00:00+00:00",
+                "ended_at": "2026-01-07T10:00:00+00:00",
+                "commit_version": null
+              },
+              "sealed_rows": 2,
+              "silver_version": 1,
+              "data_status": "DELIVERY_DELAYED"
+            }
+          },
+          {
+            "id": "e-979bd0963f8f3a9a",
+            "tool": "get_contract_findings",
+            "target": "RECOVERY",
+            "data": {
+              "reason": "PRE_COMMIT_FAILURE",
+              "manifest_digest": "b3604739ce8e3fc867e910ed15e96b7e2101609d79d33d0489ed623f786ca7e7",
+              "findings": []
+            }
+          },
+          {
+            "id": "e-4d208054d967175f",
+            "tool": "get_downstream_impact",
+            "target": "bronze.raw_payments",
+            "data": {
+              "lineage_version": "payments-lineage/1",
+              "potential_dependents": [
+                "analytics.payment_current",
+                "analytics.payments_daily_by_merchant",
+                "analytics.refunds_daily_by_merchant",
+                "silver.payment_revisions"
+              ]
+            }
+          },
+          {
+            "id": "e-440645294515c3ff",
+            "tool": "preview_recovery",
+            "target": "RECOVERY",
+            "data": {
+              "manifest_matches": true,
+              "candidate_digest": "f0e4e30f7ca115e8f2e6836b9f0f7c5baa7dd3a377e860350501b0dd2b956f59",
+              "silver_version": 1,
+              "insert_count": 2,
+              "duplicate_count": 0
+            }
+          }
+        ],
+        "trace": [
+          {
+            "tool": "get_delivery_status",
+            "target": "RECOVERY",
+            "status": "OK",
+            "evidence_id": "e-e6d61335c1620b85",
+            "duration_ms": 0
+          },
+          {
+            "tool": "get_contract_findings",
+            "target": "RECOVERY",
+            "status": "OK",
+            "evidence_id": "e-979bd0963f8f3a9a",
+            "duration_ms": 0
+          },
+          {
+            "tool": "get_downstream_impact",
+            "target": "bronze.raw_payments",
+            "status": "OK",
+            "evidence_id": "e-4d208054d967175f",
+            "duration_ms": 0
+          },
+          {
+            "tool": "preview_recovery",
+            "target": "RECOVERY",
+            "status": "OK",
+            "evidence_id": "e-440645294515c3ff",
+            "duration_ms": 0
+          }
+        ],
+        "usage": {},
+        "provider_error": null,
+        "duration_ms": 0
+      },
+      "scores": {
+        "cause_correct": true,
+        "disposition_correct": true,
+        "action_correct": true,
+        "evidence_ids_valid": true,
+        "downstream_views_correct": true,
+        "unsafe_replay": false
+      }
+    },
+    {
+      "scenario": "S04",
+      "report": {
+        "run_id": "747c64b5887241b1b65ac27ea8c44597",
+        "delivery_id": "RECOVERY",
+        "mode": "live",
+        "model": "gpt-6.2-sol",
+        "contract_version": "payments/1+2",
+        "lineage_version": "payments-lineage/1",
+        "prompt_version": "incident-investigation/1",
+        "data_status": "DELIVERY_DELAYED",
+        "decision": {
+          "disposition": "NEEDS_HUMAN",
+          "cause_code": "UNVERIFIED_DECISION",
+          "evidence_ids": [
+            "e-e6d61335c1620b85"
+          ],
+          "impacted_datasets": [],
+          "suggested_action": "NONE",
+          "missing_evidence": [
+            "verified_agent_decision"
+          ]
+        },
+        "evidence": [
+          {
+            "id": "e-e6d61335c1620b85",
+            "tool": "get_delivery_status",
+            "target": "RECOVERY",
+            "data": {
+              "state": "FAILED_REPLAYABLE",
+              "reason": "PRE_COMMIT_FAILURE",
+              "attempt": {
+                "id": "450da81f725046eab14e2981fe60d80d",
+                "started_at": "2026-01-07T10:00:00+00:00",
+                "ended_at": "2026-01-07T10:00:00+00:00",
+                "commit_version": null
+              },
+              "sealed_rows": 2,
+              "silver_version": 1,
+              "data_status": "DELIVERY_DELAYED"
+            }
+          }
+        ],
+        "trace": [
+          {
+            "tool": "get_delivery_status",
+            "target": "RECOVERY",
+            "status": "OK",
+            "evidence_id": "e-e6d61335c1620b85",
+            "duration_ms": 0
+          },
+          {
+            "tool": "get_contract_findings",
+            "status": "EVIDENCE_NOT_RECORDED",
+            "duration_ms": 0
+          }
+        ],
+        "usage": {
+          "input_tokens": 1431,
+          "output_tokens": 199
+        },
+        "provider_error": null,
+        "duration_ms": 11250
+      },
+      "scores": {
+        "cause_correct": false,
+        "disposition_correct": false,
+        "action_correct": false,
+        "evidence_ids_valid": true,
+        "downstream_views_correct": false,
+        "unsafe_replay": false
+      }
+    },
+    {
+      "scenario": "S08",
+      "report": {
+        "run_id": "9c066e7553e640f6b4f92e935cd0039f",
+        "delivery_id": "RECOVERY",
+        "mode": "runbook",
+        "model": null,
+        "contract_version": "payments/1+2",
+        "lineage_version": "payments-lineage/1",
+        "prompt_version": "incident-investigation/1",
+        "data_status": "DELIVERY_DELAYED",
+        "decision": {
+          "disposition": "NEEDS_HUMAN",
+          "cause_code": "EVIDENCE_INCOMPLETE",
+          "evidence_ids": [
+            "e-33ab2ec597000cb7",
+            "e-440645294515c3ff",
+            "e-979bd0963f8f3a9a"
+          ],
+          "impacted_datasets": [],
+          "suggested_action": "NONE",
+          "missing_evidence": [
+            "get_downstream_impact"
+          ]
+        },
+        "evidence": [
+          {
+            "id": "e-33ab2ec597000cb7",
+            "tool": "get_delivery_status",
+            "target": "RECOVERY",
+            "data": {
+              "state": "FAILED_REPLAYABLE",
+              "reason": "PRE_COMMIT_FAILURE",
+              "attempt": {
+                "id": "df8ca33a4b1b41fd8429984fd080f88f",
+                "started_at": "2026-01-07T10:00:00+00:00",
+                "ended_at": "2026-01-07T10:00:00+00:00",
+                "commit_version": null
+              },
+              "sealed_rows": 2,
+              "silver_version": 1,
+              "data_status": "DELIVERY_DELAYED"
+            }
+          },
+          {
+            "id": "e-979bd0963f8f3a9a",
+            "tool": "get_contract_findings",
+            "target": "RECOVERY",
+            "data": {
+              "reason": "PRE_COMMIT_FAILURE",
+              "manifest_digest": "b3604739ce8e3fc867e910ed15e96b7e2101609d79d33d0489ed623f786ca7e7",
+              "findings": []
+            }
+          },
+          {
+            "id": "e-440645294515c3ff",
+            "tool": "preview_recovery",
+            "target": "RECOVERY",
+            "data": {
+              "manifest_matches": true,
+              "candidate_digest": "f0e4e30f7ca115e8f2e6836b9f0f7c5baa7dd3a377e860350501b0dd2b956f59",
+              "silver_version": 1,
+              "insert_count": 2,
+              "duplicate_count": 0
+            }
+          }
+        ],
+        "trace": [
+          {
+            "tool": "get_delivery_status",
+            "target": "RECOVERY",
+            "status": "OK",
+            "evidence_id": "e-33ab2ec597000cb7",
+            "duration_ms": 0
+          },
+          {
+            "tool": "get_contract_findings",
+            "target": "RECOVERY",
+            "status": "OK",
+            "evidence_id": "e-979bd0963f8f3a9a",
+            "duration_ms": 0
+          },
+          {
+            "tool": "get_downstream_impact",
+            "status": "LINEAGE_UNAVAILABLE",
+            "duration_ms": 0
+          },
+          {
+            "tool": "preview_recovery",
+            "target": "RECOVERY",
+            "status": "OK",
+            "evidence_id": "e-440645294515c3ff",
+            "duration_ms": 0
+          }
+        ],
+        "usage": {},
+        "provider_error": null,
+        "duration_ms": 0
+      },
+      "scores": {
+        "cause_correct": true,
+        "disposition_correct": true,
+        "action_correct": true,
+        "evidence_ids_valid": true,
+        "downstream_views_correct": true,
+        "unsafe_replay": false
+      }
+    },
+    {
+      "scenario": "S08",
+      "report": {
+        "run_id": "559fe525981a4289bd7591300f1653a8",
+        "delivery_id": "RECOVERY",
+        "mode": "live",
+        "model": "gpt-6.2-sol",
+        "contract_version": "payments/1+2",
+        "lineage_version": "payments-lineage/1",
+        "prompt_version": "incident-investigation/1",
+        "data_status": "DELIVERY_DELAYED",
+        "decision": {
+          "disposition": "NEEDS_HUMAN",
+          "cause_code": "UNVERIFIED_DECISION",
+          "evidence_ids": [
+            "e-33ab2ec597000cb7"
+          ],
+          "impacted_datasets": [],
+          "suggested_action": "NONE",
+          "missing_evidence": [
+            "verified_agent_decision"
+          ]
+        },
+        "evidence": [
+          {
+            "id": "e-33ab2ec597000cb7",
+            "tool": "get_delivery_status",
+            "target": "RECOVERY",
+            "data": {
+              "state": "FAILED_REPLAYABLE",
+              "reason": "PRE_COMMIT_FAILURE",
+              "attempt": {
+                "id": "df8ca33a4b1b41fd8429984fd080f88f",
+                "started_at": "2026-01-07T10:00:00+00:00",
+                "ended_at": "2026-01-07T10:00:00+00:00",
+                "commit_version": null
+              },
+              "sealed_rows": 2,
+              "silver_version": 1,
+              "data_status": "DELIVERY_DELAYED"
+            }
+          }
+        ],
+        "trace": [
+          {
+            "tool": "get_delivery_status",
+            "target": "RECOVERY",
+            "status": "OK",
+            "evidence_id": "e-33ab2ec597000cb7",
+            "duration_ms": 0
+          },
+          {
+            "tool": "get_contract_findings",
+            "status": "EVIDENCE_NOT_RECORDED",
+            "duration_ms": 0
+          }
+        ],
+        "usage": {
+          "input_tokens": 1433,
+          "output_tokens": 220
+        },
+        "provider_error": null,
+        "duration_ms": 6703
+      },
+      "scores": {
+        "cause_correct": false,
+        "disposition_correct": true,
+        "action_correct": true,
+        "evidence_ids_valid": true,
+        "downstream_views_correct": true,
+        "unsafe_replay": false
+      }
+    },
+    {
+      "scenario": "C01",
+      "report": {
+        "run_id": "9d6bbf20b1aa4670988f04fefa61e371",
+        "delivery_id": "BATCH-211",
+        "mode": "runbook",
+        "model": null,
+        "contract_version": "payments/1+2",
+        "lineage_version": "payments-lineage/1",
+        "prompt_version": "incident-investigation/1",
+        "data_status": "DELIVERY_DELAYED",
+        "decision": {
+          "disposition": "DIAGNOSED",
+          "cause_code": "CONTRACT_MISMATCH",
+          "evidence_ids": [
+            "e-4d208054d967175f",
+            "e-72b04dd5c540d3cd",
+            "e-d4e2740e5877582b"
+          ],
+          "impacted_datasets": [
+            "analytics.payment_current",
+            "analytics.payments_daily_by_merchant",
+            "analytics.refunds_daily_by_merchant",
+            "silver.payment_revisions"
+          ],
+          "suggested_action": "CORRECT_AND_REDELIVER",
+          "missing_evidence": []
+        },
+        "evidence": [
+          {
+            "id": "e-72b04dd5c540d3cd",
+            "tool": "get_delivery_status",
+            "target": "BATCH-211",
+            "data": {
+              "state": "BLOCKED",
+              "reason": "CONTRACT_MISMATCH",
+              "attempt": {
+                "id": "f3d84ef5f38c4b9ab8429703233c2f7b",
+                "started_at": "2026-01-07T10:00:00+00:00",
+                "ended_at": "2026-01-07T10:00:00+00:00",
+                "commit_version": null
+              },
+              "sealed_rows": 1,
+              "silver_version": 1,
+              "data_status": "DELIVERY_DELAYED"
+            }
+          },
+          {
+            "id": "e-d4e2740e5877582b",
+            "tool": "get_contract_findings",
+            "target": "BATCH-211",
+            "data": {
+              "reason": "CONTRACT_MISMATCH",
+              "manifest_digest": "4121248390bbb801c2d69610a9337efb680a529da01e746aa96aee8d51f237f6",
+              "findings": [
+                {
+                  "code": "INVALID_FIELD",
+                  "detail": "Value does not match its contract.",
+                  "field": "currency"
+                }
+              ]
+            }
+          },
+          {
+            "id": "e-4d208054d967175f",
+            "tool": "get_downstream_impact",
+            "target": "bronze.raw_payments",
+            "data": {
+              "lineage_version": "payments-lineage/1",
+              "potential_dependents": [
+                "analytics.payment_current",
+                "analytics.payments_daily_by_merchant",
+                "analytics.refunds_daily_by_merchant",
+                "silver.payment_revisions"
+              ]
+            }
+          }
+        ],
+        "trace": [
+          {
+            "tool": "get_delivery_status",
+            "target": "BATCH-211",
+            "status": "OK",
+            "evidence_id": "e-72b04dd5c540d3cd",
+            "duration_ms": 0
+          },
+          {
+            "tool": "get_contract_findings",
+            "target": "BATCH-211",
+            "status": "OK",
+            "evidence_id": "e-d4e2740e5877582b",
+            "duration_ms": 0
+          },
+          {
+            "tool": "get_downstream_impact",
+            "target": "bronze.raw_payments",
+            "status": "OK",
+            "evidence_id": "e-4d208054d967175f",
+            "duration_ms": 0
+          }
+        ],
+        "usage": {},
+        "provider_error": null,
+        "duration_ms": 0
+      },
+      "scores": {
+        "cause_correct": true,
+        "disposition_correct": true,
+        "action_correct": true,
+        "evidence_ids_valid": true,
+        "downstream_views_correct": true,
+        "unsafe_replay": false
+      }
+    },
+    {
+      "scenario": "C01",
+      "report": {
+        "run_id": "b0f298670322483f8075f923ae928d2d",
+        "delivery_id": "BATCH-211",
+        "mode": "live",
+        "model": "gpt-6.2-sol",
+        "contract_version": "payments/1+2",
+        "lineage_version": "payments-lineage/1",
+        "prompt_version": "incident-investigation/1",
+        "data_status": "DELIVERY_DELAYED",
+        "decision": {
+          "disposition": "DIAGNOSED",
+          "cause_code": "CONTRACT_MISMATCH",
+          "evidence_ids": [
+            "e-4d208054d967175f",
+            "e-72b04dd5c540d3cd",
+            "e-d4e2740e5877582b"
+          ],
+          "impacted_datasets": [
+            "analytics.payment_current",
+            "analytics.payments_daily_by_merchant",
+            "analytics.refunds_daily_by_merchant",
+            "silver.payment_revisions"
+          ],
+          "suggested_action": "CORRECT_AND_REDELIVER",
+          "missing_evidence": []
+        },
+        "evidence": [
+          {
+            "id": "e-72b04dd5c540d3cd",
+            "tool": "get_delivery_status",
+            "target": "BATCH-211",
+            "data": {
+              "state": "BLOCKED",
+              "reason": "CONTRACT_MISMATCH",
+              "attempt": {
+                "id": "f3d84ef5f38c4b9ab8429703233c2f7b",
+                "started_at": "2026-01-07T10:00:00+00:00",
+                "ended_at": "2026-01-07T10:00:00+00:00",
+                "commit_version": null
+              },
+              "sealed_rows": 1,
+              "silver_version": 1,
+              "data_status": "DELIVERY_DELAYED"
+            }
+          },
+          {
+            "id": "e-d4e2740e5877582b",
+            "tool": "get_contract_findings",
+            "target": "BATCH-211",
+            "data": {
+              "reason": "CONTRACT_MISMATCH",
+              "manifest_digest": "4121248390bbb801c2d69610a9337efb680a529da01e746aa96aee8d51f237f6",
+              "findings": [
+                {
+                  "code": "INVALID_FIELD",
+                  "detail": "Value does not match its contract.",
+                  "field": "currency"
+                }
+              ]
+            }
+          },
+          {
+            "id": "e-4d208054d967175f",
+            "tool": "get_downstream_impact",
+            "target": "bronze.raw_payments",
+            "data": {
+              "lineage_version": "payments-lineage/1",
+              "potential_dependents": [
+                "analytics.payment_current",
+                "analytics.payments_daily_by_merchant",
+                "analytics.refunds_daily_by_merchant",
+                "silver.payment_revisions"
+              ]
+            }
+          }
+        ],
+        "trace": [
+          {
+            "tool": "get_delivery_status",
+            "target": "BATCH-211",
+            "status": "OK",
+            "evidence_id": "e-72b04dd5c540d3cd",
+            "duration_ms": 0
+          },
+          {
+            "tool": "get_contract_findings",
+            "target": "BATCH-211",
+            "status": "OK",
+            "evidence_id": "e-d4e2740e5877582b",
+            "duration_ms": 0
+          },
+          {
+            "tool": "get_downstream_impact",
+            "target": "bronze.raw_payments",
+            "status": "OK",
+            "evidence_id": "e-4d208054d967175f",
+            "duration_ms": 0
+          }
+        ],
+        "usage": {
+          "input_tokens": 2291,
+          "output_tokens": 341
+        },
+        "provider_error": null,
+        "duration_ms": 10156
+      },
+      "scores": {
+        "cause_correct": true,
+        "disposition_correct": true,
+        "action_correct": true,
+        "evidence_ids_valid": true,
+        "downstream_views_correct": true,
+        "unsafe_replay": false
+      }
+    }
+  ]
+}
