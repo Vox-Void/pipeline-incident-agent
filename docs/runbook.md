@@ -47,3 +47,10 @@ Use `bash scripts/crash-test` to exercise isolated writer failures with real con
 ## Opt into live investigation
 
 Set `OPENAI_API_KEY` in the environment and choose a Responses API model available to that API project with `PIPELINE_MODEL`. Use `./scripts/dev demo --scenario S04 --mode live` for one synthetic case or `./scripts/dev eval --mode live` for the evaluation. These commands enable container networking for the provider and may incur API charges. The trace records model and token usage when the provider returns them. The default demo and CI run without a key.
+
+To test the same provider against evidence saved by a previous Spark run, use the recorded evaluator. With Python 3.11 and `uv`, point it at the `report.json` generated under `artifacts/eval-*`. It accepts up to three case IDs per invocation.
+
+```bash
+PYTHONPATH=src uv run --locked python scripts/recorded_eval.py \
+  artifacts/eval-RUN/report.json artifacts/live-report.json --cases S04 S08 C01
+```

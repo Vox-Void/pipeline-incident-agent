@@ -20,6 +20,8 @@ Commands return a nonzero status when they fail. You can run one integration sce
 
 ## What the demos show
 
+Watch the [2:29 captioned walkthrough](docs/demo.mp4), which uses output from the actual Spark runs.
+
 | Scenario | What happens | Captured before | Captured after |
 | --- | --- | ---: | ---: |
 | `S04` | A valid delivery fails before its commit. The investigator gathers evidence. The fixture shows the refusal without approval, records approval of the exact plan and applies the replay. Reapplying returns the existing operation. | 39.75 | 76.75 |
@@ -36,14 +38,16 @@ The default investigator is scripted and the report labels it `scripted`. The de
 
 ## Verify the results
 
-- The [Spark integration run](https://github.com/Vox-Void/pipeline-incident-agent/actions/runs/44914473973) passed all nine scenarios, including checkpoint reuse, exact duplicates, out-of-order revisions, contract rejection, stale approval and missing lineage. The [independent expected results](fixtures/golden/scenarios.json) give exact row counts and totals.
+- The [Linux CI run](https://github.com/Vox-Void/pipeline-incident-agent/actions/runs/44915449551) passed all nine Spark scenarios and both writer crash tests. It checked checkpoint reuse, duplicates, out-of-order revisions, contract rejection, stale approval and missing lineage. The [independent expected results](fixtures/golden/scenarios.json) give exact row counts and totals.
 - The [recovery and contract PR](https://github.com/Vox-Void/pipeline-incident-agent/pull/1) shows how the Bronze seal check was added and how CI runs the real writer crash tests.
-- `./scripts/dev eval` grades the scripted investigator and a fixed runbook on the same snapshots. Both produce per-case decisions, evidence IDs, tool calls and elapsed time. The evaluation uses synthetic cases with explicit expected outcomes.
+- `./scripts/dev eval` grades the scripted investigator and a fixed runbook on the same snapshots. Both produce per-case decisions, evidence IDs, tool calls and elapsed time. Use `--split challenge` for the three seeded variants that were added after the investigation prompt was frozen.
+- The live benchmark includes a correct contract diagnosis and two investigations the verifier stopped because evidence was missing. See the [live scores and failure analysis](docs/example-results/README.md#live-openai-sample).
 
 ## Read further
 
 - [Architecture and data contracts](docs/architecture.md)
 - [Operator runbook and live mode](docs/runbook.md)
+- [Example results and testing notes](docs/example-results/README.md)
 - [Revision ordering decision](docs/decisions/001-payment-revisions.md)
 - [Replay and crash recovery decision](docs/decisions/002-recovery-boundary.md)
 

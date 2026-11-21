@@ -40,4 +40,4 @@ The report lists possible downstream impact separately from the delivery status.
 - Run this version with one local JVM at a time and one writable named volume. SQLite holds the operational records. Delta holds the committed payment history.
 - A production rollout would need authenticated operator identities, monitoring for stuck attempts and an agreed retention policy. The local actor ID records who asserted approval in the demo.
 - A larger pipeline would use durable object storage, a shared state database and coordinated writer ownership. Compare that design against the recovery assumptions before adopting it. The [recovery decision](decisions/002-recovery-boundary.md) describes the boundary.
-- The scripted evaluation covers authored scenarios. Use a separate challenge set and repeated live runs before making claims about model quality.
+- The evaluation uses nine development scenarios and three seeded challenge cases. Use more varied producers and repeated live runs before making claims about model quality.

@@ -4,17 +4,28 @@ import argparse
 import json
 import subprocess
 from pathlib import Path
-from typing import Any
+from typing import Any, TypedDict
 
 CONTRACTS = ("contracts/payment-v1.json", "contracts/payment-v2.json")
 DOWNSTREAM_FIELDS = {"payment_id", "merchant_id", "payment_date", "amount", "revision", "status"}
 
 
-def compare(old: dict[str, Any], new: dict[str, Any], *, new_version: bool) -> list[dict[str, str]]:
+class FieldChange(TypedDict):
+    field: str
+    change: str
+    result: str
+
+
+class Comparison(TypedDict):
+    comparison: str
+    changes: list[FieldChange]
+
+
+def compare(old: dict[str, Any], new: dict[str, Any], *, new_version: bool) -> list[FieldChange]:
     old_fields = old["properties"]
     new_fields = new["properties"]
     required = set(new["required"])
-    changes = []
+    changes: list[FieldChange] = []
     for name in sorted(old_fields.keys() | new_fields.keys()):
         if name not in new_fields:
             change, result = "removed", "blocked"
@@ -43,7 +54,7 @@ def compare(old: dict[str, Any], new: dict[str, Any], *, new_version: bool) -> l
 def check(base: str | None) -> dict[str, Any]:
     schemas = {path: json.loads(Path(path).read_bytes()) for path in CONTRACTS}
     _, v2 = CONTRACTS
-    differences = [
+    differences: list[Comparison] = [
         {"comparison": "producer v1 to v2", "changes": compare(*schemas.values(), new_version=True)}
     ]
     supported_channel = schemas[v2]["properties"].get("channel") == {"enum": ["WEB", "APP"]}
