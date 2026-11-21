@@ -308,7 +308,12 @@ class Operator:
         for attempt in pending:
             versions = self.engine.commit_versions(attempt["metadata"])
             expected: list[list[Any]] = json.loads(attempt["expected"])
-            if versions == [attempt["base_version"] + 1] and self.matches_commit(attempt, expected):
+            if (
+                versions == [attempt["base_version"] + 1]
+                and expected
+                and self.engine.committed_rows(attempt["delivery_id"], versions[0], len(expected))
+                == expected
+            ):
                 state = "APPLIED" if attempt["plan_id"] else "PROJECTED"
                 results.append(
                     self.finish(
@@ -351,14 +356,3 @@ class Operator:
                     "NEEDS_RECONCILIATION", "Delta history did not match the recorded insert set."
                 )
         return results
-
-    def matches_commit(self, attempt: dict[str, Any], expected: list[list[Any]]) -> bool:
-        keys = {(entry[0], entry[1]) for entry in expected}
-        history = self.engine.history({entry[0] for entry in expected})
-        committed = sorted(
-            [record["payment_id"], record["revision"], record["payload_hash"]]
-            for record in history
-            if (record["payment_id"], record["revision"]) in keys
-            and record["delivery_id"] == attempt["delivery_id"]
-        )
-        return bool(expected) and committed == expected

@@ -211,6 +211,20 @@ class Engine:
         )
         return [int(commit.version) for commit in commits]
 
+    def committed_rows(self, delivery_id: str, version: int, limit: int) -> list[list[Any]]:
+        records = (
+            self.spark.read.format("delta")
+            .option("versionAsOf", version)
+            .load(str(self.workspace.silver))
+            .where(F.col("delivery_id") == delivery_id)
+            .select("payment_id", "revision", "payload_hash")
+            .limit(limit + 1)
+            .collect()
+        )
+        return sorted(
+            [record.payment_id, record.revision, record.payload_hash] for record in records
+        )
+
     def totals(self, additional: list[Payment] | None = None) -> dict[str, Any]:
         history = self.silver.toDF()
         if additional:

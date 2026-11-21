@@ -1,0 +1,5 @@
+{
+  "C01": {"seed": 211, "fault": "currency", "cause_code": "CONTRACT_MISMATCH", "disposition": "DIAGNOSED", "action": "CORRECT_AND_REDELIVER"},
+  "C02": {"seed": 479, "fault": "manifest", "cause_code": "MISSING_DELIVERY", "disposition": "DIAGNOSED", "action": "CORRECT_AND_REDELIVER"},
+  "C03": {"seed": 673, "fault": "lineage", "cause_code": "EVIDENCE_INCOMPLETE", "disposition": "NEEDS_HUMAN", "action": "NONE"}
+}

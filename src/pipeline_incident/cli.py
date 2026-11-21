@@ -38,6 +38,10 @@ def arguments() -> argparse.Namespace:
         command.add_argument("--mode", choices=("scripted", "live"), default="scripted")
         if name == "demo":
             command.add_argument("--scenario", choices=SCENARIOS, default="S04")
+        if name == "eval":
+            command.add_argument(
+                "--split", choices=("all", "development", "challenge"), default="all"
+            )
     for name in (
         "stage",
         "project",
@@ -155,7 +159,7 @@ def run(args: argparse.Namespace, spark: SparkSession, home: Path, reports: Path
     if args.command in {"demo", "eval"}:
         reports.mkdir(parents=True, exist_ok=True)
         if args.command == "eval":
-            return evaluate(spark, home, reports, live=args.mode == "live")
+            return evaluate(spark, home, reports, live=args.mode == "live", split=args.split)
         planner = OpenAIPlanner() if args.mode == "live" else ScriptedPlanner()
         result = run_scenario(spark, home, args.scenario, [planner])
         directory = Path(mkdtemp(prefix=f"demo-{args.scenario.lower()}-", dir=reports))
@@ -185,4 +189,4 @@ def main() -> int:
         reports.mkdir(parents=True, exist_ok=True)
         (reports / args.result_file).write_text(rendered, encoding="utf-8")
     print(rendered, end="")
-    return 0
+    return 0 if result.get("passed", True) else 1
