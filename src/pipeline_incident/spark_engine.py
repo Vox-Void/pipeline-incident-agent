@@ -54,6 +54,7 @@ def session() -> SparkSession:
         .config("spark.databricks.delta.snapshotPartitions", "2")
         .config("spark.sql.adaptive.enabled", "false")
         .config("spark.ui.enabled", "false")
+        .config("spark.ui.showConsoleProgress", "false")
         .getOrCreate()
     )
     spark.sparkContext.setLogLevel("ERROR")

@@ -68,7 +68,13 @@ def arguments() -> argparse.Namespace:
             command.add_argument("--fixture-mode", action="store_true")
         if name == "project":
             command.add_argument("--fail-before-merge", action="store_true")
+    for command in commands.choices.values():
+        command.add_argument(
+            "--result-file", help="Write the JSON result to this filename under artifacts/."
+        )
     args = parser.parse_args()
+    if args.result_file and not re.fullmatch(r"[a-z0-9][a-z0-9_.-]{0,95}\.json", args.result_file):
+        parser.error("--result-file must be a lowercase JSON filename without a directory")
     if hasattr(args, "namespace") and not re.fullmatch(r"[a-z][a-z0-9-]{0,47}", args.namespace):
         parser.error(
             "--namespace must start with a lowercase letter and use lowercase letters, digits or hyphens"
@@ -174,5 +180,9 @@ def main() -> int:
         return 1
     finally:
         spark.stop()
-    print(json.dumps(result, indent=2))
+    rendered = json.dumps(result, indent=2) + "\n"
+    if args.result_file:
+        reports.mkdir(parents=True, exist_ok=True)
+        (reports / args.result_file).write_text(rendered, encoding="utf-8")
+    print(rendered, end="")
     return 0

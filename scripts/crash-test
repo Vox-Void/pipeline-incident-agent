@@ -25,8 +25,8 @@ for boundary in before-merge after-commit; do
     exit 1
   fi
 
-  plan=$(./scripts/dev plan --namespace "$namespace" --delivery RECOVERY)
-  read -r plan_id digest < <(python3 -c 'import json, sys; p = json.load(sys.stdin); print(p["plan_id"], p["digest"])' <<< "$plan")
+  ./scripts/dev plan --namespace "$namespace" --delivery RECOVERY --result-file "$namespace-plan.json"
+  read -r plan_id digest < <(python3 -c 'import json, sys; p = json.load(sys.stdin); print(p["plan_id"], p["digest"])' <"artifacts/$namespace-plan.json")
   ./scripts/dev approve --namespace "$namespace" --plan "$plan_id" --digest "$digest" --actor crash-fixture
   docker compose run -d -T --name "$container" pipeline apply --namespace "$namespace" \
     --plan "$plan_id" --digest "$digest" --pause-at "$boundary" --fixture-mode
@@ -85,15 +85,18 @@ PYTHON
   docker logs "$container" >"artifacts/crash-$boundary.log" 2>&1
   remove_writer
   container=""
-  first=$(./scripts/dev apply --namespace "$namespace" --plan "$plan_id" --digest "$digest")
-  repeat=$(./scripts/dev apply --namespace "$namespace" --plan "$plan_id" --digest "$digest")
-  totals=$(./scripts/dev totals --namespace "$namespace")
-  python3 - "$boundary" "$first" "$repeat" "$totals" >>"artifacts/crash-$boundary.log" <<'PYTHON'
+  ./scripts/dev apply --namespace "$namespace" --plan "$plan_id" --digest "$digest" --result-file "$namespace-first.json"
+  ./scripts/dev apply --namespace "$namespace" --plan "$plan_id" --digest "$digest" --result-file "$namespace-repeat.json"
+  ./scripts/dev totals --namespace "$namespace" --result-file "$namespace-totals.json"
+  python3 - "$boundary" "artifacts/$namespace" >>"artifacts/crash-$boundary.log" <<'PYTHON'
 import json
 import sys
+from pathlib import Path
 
 boundary = sys.argv[1]
-first, repeat, totals = map(json.loads, sys.argv[2:])
+first, repeat, totals = (
+    json.loads(Path(f'{sys.argv[2]}-{name}.json').read_bytes()) for name in ('first', 'repeat', 'totals')
+)
 assert first['status'] == repeat['status'] == 'APPLIED'
 assert first['operation_id'] == repeat['operation_id']
 assert repeat['repeated'] is True
