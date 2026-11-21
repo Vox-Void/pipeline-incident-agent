@@ -1,0 +1,14 @@
+services:
+  pipeline:
+    build:
+      context: .
+    image: pipeline-incident-agent:local
+    init: true
+    network_mode: none
+    volumes:
+      - pipeline-data:/data
+    environment:
+      PIPELINE_HOME: /data
+
+volumes:
+  pipeline-data:

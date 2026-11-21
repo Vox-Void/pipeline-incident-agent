@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+set -euo pipefail
+if [[ "${1:-}" == "checks" ]]; then
+    shift
+    ruff format --check src tests scripts
+    ruff check src tests scripts
+    mypy
+    exec pytest -m 'not spark' "$@"
+fi
+
+# spark-submit execs a JVM. The lock descriptor stays open until the JVM exits.
+mkdir -p "${PIPELINE_HOME:?}"
+exec 9>"$PIPELINE_HOME/.writer.lock"
+flock -x 9
+jars=/opt/delta/delta-spark_2.12-3.3.2.jar,/opt/delta/delta-storage-3.3.2.jar
+exec spark-submit --master 'local[2]' --driver-memory 1g --jars "$jars" /app/scripts/driver.py "$@"

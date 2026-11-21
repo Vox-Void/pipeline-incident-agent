@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+set -euo pipefail
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
+
+command="${1:-}"
+if [[ $# -gt 0 ]]; then shift; fi
+case "$command" in
+  bootstrap)
+    docker compose build pipeline
+    docker compose run --rm -T pipeline smoke
+    ;;
+  test)
+    docker compose run --rm -T pipeline checks
+    docker compose run --rm -T pipeline integration "$@"
+    ;;
+  demo|eval|stage|status|investigate|plan|approve|apply|reconcile|totals|smoke)
+    compose=(docker compose)
+    if [[ " $* " == *" --mode live "* ]]; then
+      compose+=(-f compose.yaml -f compose.live.yaml)
+    fi
+    "${compose[@]}" run --rm -T pipeline "$command" "$@"
+    ;;
+  *)
+    echo "Usage: scripts/dev {bootstrap|test|demo|eval|stage|status|investigate|plan|approve|apply|reconcile|totals|smoke}" >&2
+    exit 2
+    ;;
+esac

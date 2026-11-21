@@ -1,0 +1,36 @@
+[project]
+name = "pipeline-incident-agent"
+version = "0.1.0"
+description = "Investigate and recover a synthetic payments pipeline"
+requires-python = ">=3.11,<3.12"
+dependencies = [
+    "delta-spark==3.3.2",
+    "jsonschema==4.25.1",
+    "pyspark==3.5.8",
+]
+
+[dependency-groups]
+dev = [
+    "mypy==1.19.1",
+    "pytest==9.0.2",
+    "ruff==0.14.14",
+    "types-jsonschema==4.25.1.20251009",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+markers = ["spark: requires a real Spark and Delta runtime"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+ignore = ["E501"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+files = ["src"]

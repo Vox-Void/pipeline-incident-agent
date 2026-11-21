@@ -1,0 +1,6 @@
+services:
+  pipeline:
+    network_mode: bridge
+    environment:
+      OPENAI_API_KEY: ${OPENAI_API_KEY:?set OPENAI_API_KEY for live evaluation}
+      PIPELINE_MODEL: ${PIPELINE_MODEL:-gpt-6.2-sol}
