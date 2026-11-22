@@ -15,9 +15,25 @@ case "$command" in
     ;;
   demo|eval|stage|project|status|investigate|plan|approve|apply|reconcile|totals|smoke)
     compose=(docker compose)
-    # Add network and provider settings only for live mode.
-    if [[ " $* " == *" --mode live "* ]]; then
-      compose+=(-f compose.yaml -f compose.live.yaml)
+    if [[ "$command" == demo || "$command" == eval || "$command" == investigate ]]; then
+      # Match the CLI parser's mode spellings and use the last supplied value.
+      mode=scripted
+      next_is_mode=false
+      for arg in "$@"; do
+        if $next_is_mode; then
+          mode="$arg"
+          next_is_mode=false
+          continue
+        fi
+        case "$arg" in
+          --mode|--mod|--mo|--m) next_is_mode=true ;;
+          --mode=*|--mod=*|--mo=*|--m=*) mode="${arg#*=}" ;;
+          --) break ;;
+        esac
+      done
+      if [[ "$mode" == live ]]; then
+        compose+=(-f compose.yaml -f compose.live.yaml)
+      fi
     fi
     "${compose[@]}" run --rm -T pipeline "$command" "$@"
     ;;

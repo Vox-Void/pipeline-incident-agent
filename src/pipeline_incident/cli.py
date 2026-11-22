@@ -171,6 +171,8 @@ def run(args: argparse.Namespace, spark: SparkSession, home: Path, reports: Path
         report.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
         return {**result, "report": str(report)}
     workspace = Workspace(home / args.namespace)
+    if args.command != "stage" and not workspace.ledger.is_file():
+        raise PipelineError("UNKNOWN_NAMESPACE", "No ledger for this namespace. Run stage first.")
     return operator_command(args, Operator(workspace, Engine(spark, workspace)))
 
 
