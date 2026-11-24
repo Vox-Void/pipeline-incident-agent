@@ -1,8 +1,11 @@
 import json
 import sqlite3
+from concurrent.futures import ThreadPoolExecutor
+from threading import Barrier
 
 import pytest
 
+from pipeline_incident import deliveries
 from pipeline_incident.contracts import ROOT, InvalidEvent, line_digest, parse_payment
 from pipeline_incident.deliveries import PipelineError, Workspace, describe, load_manifest, stage
 from pipeline_incident.fixtures import BASELINE, broken_contract, payment
@@ -25,6 +28,26 @@ def test_sealed_fixture_is_stable(tmp_path):
         pytest.raises(sqlite3.OperationalError),
     ):
         connection.execute("DELETE FROM deliveries")
+
+
+def test_concurrent_retries_publish_one_complete_delivery(tmp_path, monkeypatch):
+    workspace = Workspace(tmp_path)
+    ready_to_link = Barrier(4)
+    link = deliveries.os.link
+
+    def publish_together(source, destination):
+        ready_to_link.wait(timeout=10)
+        return link(source, destination)
+
+    monkeypatch.setattr(deliveries.os, "link", publish_together)
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        jobs = [pool.submit(stage, workspace, "BASELINE", BASELINE) for _ in range(4)]
+        manifests = [job.result(timeout=15) for job in jobs]
+
+    assert manifests == [load_manifest(workspace, "BASELINE")] * 4
+    assert list(workspace.inbox.iterdir()) == [workspace.inbox / "BASELINE.jsonl"]
+    assert (workspace.inbox / "BASELINE.jsonl").read_bytes() == BASELINE
+    assert not list(tmp_path.glob(".delivery-*"))
 
 
 @pytest.mark.parametrize("payload", [b"{}", b"{}\r\n", b"\n", b"\xff\n"])

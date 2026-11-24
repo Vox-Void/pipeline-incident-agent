@@ -3,8 +3,10 @@
 import json
 import os
 import re
+from contextlib import suppress
 from dataclasses import asdict, dataclass
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
 from pipeline_incident.contracts import canonical, line_digest, sha256
 from pipeline_incident.ledger import as_json, ledger, row
@@ -88,27 +90,30 @@ def stage(workspace: Workspace, delivery_id: str, payload: bytes) -> Manifest:
     manifest_json = as_json(asdict(manifest))
     # Register the seal in SQLite and accept a reused delivery ID with the same seal.
     with ledger(workspace.ledger) as connection, connection:
+        connection.execute(
+            "INSERT INTO deliveries (id, manifest, state) VALUES (?, ?, 'SEALED') "
+            "ON CONFLICT (id) DO NOTHING",
+            (delivery_id, manifest_json),
+        )
         existing = row(connection, "SELECT manifest FROM deliveries WHERE id = ?", (delivery_id,))
-        if existing is None:
-            connection.execute(
-                "INSERT INTO deliveries (id, manifest, state) VALUES (?, ?, 'SEALED')",
-                (delivery_id, manifest_json),
-            )
-        elif existing["manifest"] != manifest_json:
+        if existing is None or existing["manifest"] != manifest_json:
             raise PipelineError(
                 "DELIVERY_ID_CONFLICT", "Use a new ID for different delivery bytes."
             )
-    if destination.exists():
-        if sha256(destination.read_bytes()) != manifest.file_sha256:
-            raise PipelineError("MANIFEST_MISMATCH", "The watched file no longer matches its seal.")
-        return manifest
-    # Flush the temporary file to disk and move it into the watched inbox.
-    temporary = workspace.root / f".{delivery_id}.staged"
-    with temporary.open("wb") as stream:
-        stream.write(payload)
-        stream.flush()
-        os.fsync(stream.fileno())
-    os.replace(temporary, destination)
+    if not destination.exists():
+        # Publish a complete file without replacing one published by a concurrent retry.
+        with TemporaryDirectory(prefix=".delivery-", dir=workspace.root) as scratch:
+            temporary = Path(scratch) / destination.name
+            with temporary.open("wb") as stream:
+                stream.write(payload)
+                stream.flush()
+                os.fsync(stream.fileno())
+            with suppress(FileExistsError):
+                os.link(temporary, destination)
+    with destination.open("rb") as stream:
+        watched_bytes = stream.read(MAX_BYTES + 1)
+    if sha256(watched_bytes) != manifest.file_sha256:
+        raise PipelineError("MANIFEST_MISMATCH", "The watched file no longer matches its seal.")
     return manifest
 
 
